@@ -52,8 +52,8 @@ sudo pacman -S --needed --noconfirm git wget curl gcc make cmake nano vim fish b
 
 info "Adding CachyOS repositories..."
 cd /tmp
-wget -q https://mirror.cachyos.org/cachyos-repo.tar.xz
-tar xf cachyos-repo.tar.xz
+wget https://mirror.cachyos.org/cachyos-repo.tar.xz
+tar xvf cachyos-repo.tar.xz
 cd cachyos-repo
 sudo ./cachyos-repo.sh
 cd /tmp
