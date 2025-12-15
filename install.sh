@@ -273,7 +273,7 @@ creative_info "✓ Blender"
 # ===== CREATIVE SUITE =====
 creative_info "Installing Creative Suite..."
 sudo pacman -S --needed --noconfirm \
-    gimp gimp-help-vi gimp-plugin-gmic gimp-nufraw \
+    gimp gimp-plugin-gmic \
     krita inkscape \
     kdenlive frei0r-plugins mediainfo mlt \
     audacity ardour scribus \
