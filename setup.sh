@@ -211,7 +211,6 @@ install_unreal_engine() {
     log "Cài đặt codec multimedia..."
     sudo pacman -S --needed --noconfirm \
         ffmpeg \
-        lib32-ffmpeg \
         gstreamer \
         gst-plugins-base \
         gst-plugins-good \
@@ -257,6 +256,7 @@ install_unreal_engine() {
     
     # Cài libicu50 từ AUR (required cho UE5)
     yay -S --noconfirm --needed libicu50
+yay -S --noconfirm --needed lib32-ffmpeg
     
     # Tạo thư mục cho UE5
     mkdir -p "$HOME/UnrealEngine"
