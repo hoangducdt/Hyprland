@@ -176,7 +176,7 @@ install_unreal_engine() {
         vulkan-tools \
         vulkan-validation-layers \
         lib32-vulkan-icd-loader \
-        libicu \
+        icu \
         xdg-user-dirs
     
     # Thư viện đồ họa và âm thanh cho UE games
