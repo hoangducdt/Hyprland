@@ -222,7 +222,7 @@ log "✓ Gaming + Dev"
 # ===== MULTIMEDIA (OFFICIAL REPO - KHÔNG DÙNG AUR) =====
 log "Cài multimedia packages..."
 sudo pacman -S --needed --noconfirm \
-    ffmpeg lib32-ffmpeg \
+    ffmpeg \
     gstreamer gst-plugins-{base,good,bad,ugly} \
     x264 x265 obs-studio
 
