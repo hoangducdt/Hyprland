@@ -44,8 +44,8 @@ cat << "EOF"
 │      / /___/ /_/ /  __/ /  __(__  ) /_/ / /_/ /                   │
 │      \____/\__,_/\___/_/\___/____/\__/_/\__,_/                    │
 │                                                                   │
-│   COMPLETE INSTALLER - All Features Included                     │
-│   ROG STRIX B550-XE │ Ryzen 7 5800X │ RTX 3060 12GB              │
+│   COMPLETE INSTALLER - All Features Included                      │
+│   ROG STRIX B550-XE │ Ryzen 7 5800X │ RTX 3060 12GB               │
 ╰───────────────────────────────────────────────────────────────────╯
 EOF
 echo -e "${NC}"
