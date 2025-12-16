@@ -402,8 +402,29 @@ log "✓ Vietnamese input configured"
 
 # ===== SDDM + SUGAR CANDY =====
 log "Installing SDDM + Sugar Candy theme..."
-sudo pacman -S --needed --noconfirm sddm qt5-graphicaleffects qt5-quickcontrols2 qt5-svg
+sudo pacman -S --needed --noconfirm sddm qt5-graphicaleffects qt5-quickcontrols2 qt5-svg uwsm
 sudo systemctl enable sddm.service 2>/dev/null || true
+
+sudo mkdir -p /usr/share/sddm/themes
+cd /tmp
+rm -rf sddm-sugar-candy
+git clone --depth 1 https://github.com/Kangie/sddm-sugar-candy.git 2>/dev/null || warn "Sugar Candy clone skip"
+
+if [ -d "sddm-sugar-candy" ]; then
+    sudo cp -r sddm-sugar-candy /usr/share/sddm/themes/sugar-candy
+fi
+
+sudo mkdir -p /etc/sddm.conf.d
+sudo tee /etc/sddm.conf.d/theme.conf > /dev/null <<SDDM_CONF
+[Theme]
+Current=sugar-candy
+
+[General]
+DisplayServer=wayland
+
+[Wayland]
+SessionDir=/usr/share/wayland-sessions
+SDDM_CONF
 
 log "✓ SDDM + Sugar Candy"
 
