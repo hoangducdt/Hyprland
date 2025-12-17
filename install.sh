@@ -797,12 +797,6 @@ sudo mkdir -p /etc/sddm.conf.d
 sudo tee /etc/sddm.conf.d/theme.conf > /dev/null <<SDDM_CONF
 [Theme]
 Current=sugar-candy
-
-[General]
-DisplayServer=wayland
-
-[Wayland]
-SessionDir=/usr/share/wayland-sessions
 SDDM_CONF
     
     sudo systemctl enable sddm.service 2>/dev/null || true
