@@ -661,22 +661,6 @@ setup_system_optimization() {
     echo "governor='performance'" | sudo tee /etc/default/cpupower >/dev/null
     sudo cpupower frequency-set -g performance 2>&1 | tee -a "$LOG" || warn "CPUPower setup failed"
     
-    # Sysctl optimizations
-    sudo tee /etc/sysctl.d/99-gaming.conf > /dev/null <<'SYSCTL'
-vm.swappiness=10
-vm.vfs_cache_pressure=50
-vm.dirty_ratio=10
-vm.dirty_background_ratio=5
-net.core.default_qdisc=cake
-net.ipv4.tcp_congestion_control=bbr
-net.core.rmem_max=67108864
-net.core.wmem_max=67108864
-net.ipv4.tcp_rmem=4096 87380 67108864
-net.ipv4.tcp_wmem=4096 65536 67108864
-kernel.shmmax=68719476736
-kernel.shmall=16777216
-SYSCTL
-    
     sudo sysctl --system 2>&1 | tee -a "$LOG" || warn "Sysctl apply failed"
     
     mark_completed "optimization"
@@ -696,24 +680,6 @@ setup_monitors() {
     
     mkdir -p "$HOME/.config/hypr/hyprland"
     
-    # Monitor configuration
-    cat > "$HOME/.config/hypr/hyprland/monitors.conf" <<'MONITORS'
-monitor=DP-1,2560x1080@99.94,0x0,1.0
-monitor=DP-3,1920x1080@74.97,2560x0,1.0
-MONITORS
-    
-    # Add source to hyprland.conf if not exists
-    local hypr_conf="$HOME/.config/hypr/hyprland.conf"
-    
-    if [ -f "$hypr_conf" ]; then
-        if ! grep -q 'source = $hl/monitors.conf' "$hypr_conf"; then
-            echo 'source = $hl/monitors.conf' >> "$hypr_conf"
-            log "Added monitors.conf source to hyprland.conf"
-        fi
-    else
-        warn "hyprland.conf not found at $hypr_conf"
-    fi
-    
     mark_completed "monitors"
     log "✓ Multi-monitor configured"
 }
@@ -730,44 +696,6 @@ setup_vietnamese_input() {
         "fcitx5" "fcitx5-qt" "fcitx5-gtk" "fcitx5-configtool"
     
     install_aur_package "fcitx5-bamboo-git" 600
-    
-    # Add environment variables
-    mkdir -p "$HOME/.config/hypr/hyprland"
-    cat >> "$HOME/.config/hypr/hyprland/env.conf" <<'FCITX'
-
-# NVIDIA Environment Variables
-env = LIBVA_DRIVER_NAME,nvidia
-env = XDG_SESSION_TYPE,wayland
-env = GBM_BACKEND,nvidia-drm
-env = __GLX_VENDOR_LIBRARY_NAME,nvidia
-env = WLR_NO_HARDWARE_CURSORS,1
-
-# Vietnamese Input - Fcitx5
-env = GTK_IM_MODULE,fcitx
-env = QT_IM_MODULE,fcitx
-env = XMODIFIERS,@im=fcitx
-env = SDL_IM_MODULE,fcitx
-env = GLFW_IM_MODULE,fcitx
-FCITX
-    
-    # Add autostart
-    if [ -f "$HOME/.config/hypr/hyprland/execs.conf" ]; then
-        grep -q "fcitx5" "$HOME/.config/hypr/hyprland/execs.conf" || \
-            echo "exec-once = fcitx5 -d" >> "$HOME/.config/hypr/hyprland/execs.conf"
-    fi
-    
-    # Configure VRR
-    if [ -f "$HOME/.config/hypr/hyprland/misc.conf" ]; then
-        sed -i 's/vrr = [0-9]/vrr = 0/' "$HOME/.config/hypr/hyprland/misc.conf"
-    else
-        cat > "$HOME/.config/hypr/hyprland/misc.conf" <<'MISC'
-misc {
-    vrr = 0
-    disable_hyprland_logo = true
-    disable_splash_rendering = true
-}
-MISC
-    fi
     
     mark_completed "vietnamese"
     log "✓ Vietnamese input configured"
@@ -826,8 +754,166 @@ setup_directories() {
             "$HOME/Pictures/Wallpapers" 2>&1 | tee -a "$LOG" || warn "Wallpapers clone failed"
     fi
     
-    # Create Caelestia config files
-    log "Creating Caelestia config files..."
+    mark_completed "directories"
+    log "✓ Directories created"
+}
+
+setup_utilities() {
+    if [ "$(is_completed 'utilities')" = "yes" ]; then
+        log "✓ Utilities already installed"
+        return 0
+    fi
+    
+    log "Installing utilities..."
+    
+    sudo pacman -S --needed --noconfirm \
+        htop btop neofetch fastfetch \
+        unzip p7zip unrar rsync tmux \
+        starship eza bat ripgrep fd fzf zoxide \
+        nvtop amdgpu_top iotop iftop
+    
+    install_aur_package "openrgb" 600
+    
+    mark_completed "utilities"
+    log "✓ Utilities installed"
+}
+
+setup_helper_scripts() {
+    if [ "$(is_completed 'helpers')" = "yes" ]; then
+        log "✓ Helper scripts already created"
+        return 0
+    fi
+    
+    log "Creating helper scripts..."
+    
+    mkdir -p "$HOME/.local/bin"
+    
+    # GPU check
+    cat > "$HOME/.local/bin/check-gpu" <<'HELPER'
+#!/bin/bash
+echo "=== NVIDIA GPU Status ==="
+nvidia-smi
+echo ""
+echo "=== Vulkan Info ==="
+vulkaninfo --summary 2>/dev/null || echo "vulkaninfo N/A"
+echo ""
+echo "=== OpenGL Info ==="
+glxinfo | grep "OpenGL renderer" 2>/dev/null || echo "glxinfo N/A"
+HELPER
+    chmod +x "$HOME/.local/bin/check-gpu"
+    
+    # AI workspace
+    cat > "$HOME/.local/bin/ai-workspace" <<'HELPER'
+#!/bin/bash
+echo "=== AI/ML Workspace ==="
+echo ""
+echo "📁 Directories:"
+echo "  - AI Projects: $HOME/AI-Projects"
+echo "  - AI Models: $HOME/AI-Models"
+echo ""
+echo "🤖 Tools:"
+echo "  - Ollama: ollama-start"
+echo "  - Stable Diffusion: sd-webui"
+echo "  - Text Generation: text-gen-webui"
+echo "  - ComfyUI: comfyui"
+HELPER
+    chmod +x "$HOME/.local/bin/ai-workspace"
+    
+    # Creative apps
+    cat > "$HOME/.local/bin/creative-apps" <<'HELPER'
+#!/bin/bash
+echo "=== Creative Suite ==="
+echo ""
+echo "🎨 Image: gimp, krita, darktable, rawtherapee"
+echo "🎬 Video: kdenlive, davinci-resolve"
+echo "✏️ Vector: inkscape, scribus"
+echo "🎵 Audio: audacity, ardour"
+echo "🔮 3D: blender"
+HELPER
+    chmod +x "$HOME/.local/bin/creative-apps"
+    
+    # Add more helpers as needed...
+    
+    # Add to PATH
+    grep -q ".local/bin" "$HOME/.bashrc" || \
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
+    
+    mark_completed "helpers"
+    log "✓ Helper scripts created"
+}
+
+setup_configs() {
+    # Sysctl optimizations
+    sudo tee /etc/sysctl.d/99-gaming.conf > /dev/null <<'SYSCTL'
+vm.swappiness=10
+vm.vfs_cache_pressure=50
+vm.dirty_ratio=10
+vm.dirty_background_ratio=5
+net.core.default_qdisc=cake
+net.ipv4.tcp_congestion_control=bbr
+net.core.rmem_max=67108864
+net.core.wmem_max=67108864
+net.ipv4.tcp_rmem=4096 87380 67108864
+net.ipv4.tcp_wmem=4096 65536 67108864
+kernel.shmmax=68719476736
+kernel.shmall=16777216
+SYSCTL
+
+    # Monitor configuration
+    cat > "$HOME/.config/hypr/hyprland/monitors.conf" <<'MONITORS'
+monitor=DP-1,2560x1080@99.94,0x0,1.0
+monitor=DP-3,1920x1080@74.97,2560x0,1.0
+MONITORS
+    
+    # Add source to hyprland.conf if not exists
+    local hypr_conf="$HOME/.config/hypr/hyprland.conf"
+    
+    if [ -f "$hypr_conf" ]; then
+        if ! grep -q 'source = $hl/monitors.conf' "$hypr_conf"; then
+            echo 'source = $hl/monitors.conf' >> "$hypr_conf"
+            log "Added monitors.conf source to hyprland.conf"
+        fi
+    else
+        warn "hyprland.conf not found at $hypr_conf"
+    fi
+
+    # Add environment variables
+    mkdir -p "$HOME/.config/hypr/hyprland"
+    cat >> "$HOME/.config/hypr/hyprland/env.conf" <<'FCITX'
+
+# NVIDIA Environment Variables
+env = LIBVA_DRIVER_NAME,nvidia
+env = XDG_SESSION_TYPE,wayland
+env = GBM_BACKEND,nvidia-drm
+env = __GLX_VENDOR_LIBRARY_NAME,nvidia
+env = WLR_NO_HARDWARE_CURSORS,1
+
+# Vietnamese Input - Fcitx5
+env = GTK_IM_MODULE,fcitx
+env = QT_IM_MODULE,fcitx
+env = XMODIFIERS,@im=fcitx
+env = SDL_IM_MODULE,fcitx
+env = GLFW_IM_MODULE,fcitx
+FCITX
+    
+    # Add autostart
+    if [ -f "$HOME/.config/hypr/hyprland/execs.conf" ]; then
+        grep -q "fcitx5" "$HOME/.config/hypr/hyprland/execs.conf" || \
+            echo "exec-once = fcitx5 -d" >> "$HOME/.config/hypr/hyprland/execs.conf"
+    fi
+    
+    # Configure VRR
+    if [ -f "$HOME/.config/hypr/hyprland/misc.conf" ]; then
+        sed -i 's/vrr = [0-9]/vrr = 0/' "$HOME/.config/hypr/hyprland/misc.conf"
+    else
+        cat > "$HOME/.config/hypr/hyprland/misc.conf" <<'MISC'
+misc {
+    vrr = 0
+    disable_hyprland_logo = true
+    disable_splash_rendering = true
+}
+MISC
+    fi
     
     # shell.json
     cat > "$HOME/.config/caelestia/shell.json" <<'SHELL_JSON'
@@ -860,7 +946,7 @@ setup_directories() {
         },
         "transparency": {
             "enabled": false,
-            "base": 0.85,
+            "base": 0.5,
             "layers": 0.4
         }
     },
@@ -869,7 +955,7 @@ setup_directories() {
             "terminal": ["foot"],
             "audio": ["pavucontrol"],
             "playback": ["mpv"],
-            "explorer": ["thunar"]
+            "explorer": ["nautilus"]
         },
         "battery": {
             "warnLevels": [
@@ -917,12 +1003,12 @@ setup_directories() {
     },
     "background": {
         "desktopClock": {
-            "enabled": false
+            "enabled": true
         },
         "enabled": true,
         "visualiser": {
-            "blur": false,
-            "enabled": false,
+            "blur": true,
+            "enabled": true,
             "autoHide": true,
             "rounding": 1,
             "spacing": 1
@@ -1296,95 +1382,7 @@ SHELL_JSON
     }
 }
 CLI_JSON
-    
-    log "✓ Caelestia config files created"
-    
-    mark_completed "directories"
-    log "✓ Directories created"
-}
 
-setup_utilities() {
-    if [ "$(is_completed 'utilities')" = "yes" ]; then
-        log "✓ Utilities already installed"
-        return 0
-    fi
-    
-    log "Installing utilities..."
-    
-    sudo pacman -S --needed --noconfirm \
-        htop btop neofetch fastfetch \
-        unzip p7zip unrar rsync tmux \
-        starship eza bat ripgrep fd fzf zoxide \
-        nvtop amdgpu_top iotop iftop
-    
-    install_aur_package "openrgb" 600
-    
-    mark_completed "utilities"
-    log "✓ Utilities installed"
-}
-
-setup_helper_scripts() {
-    if [ "$(is_completed 'helpers')" = "yes" ]; then
-        log "✓ Helper scripts already created"
-        return 0
-    fi
-    
-    log "Creating helper scripts..."
-    
-    mkdir -p "$HOME/.local/bin"
-    
-    # GPU check
-    cat > "$HOME/.local/bin/check-gpu" <<'HELPER'
-#!/bin/bash
-echo "=== NVIDIA GPU Status ==="
-nvidia-smi
-echo ""
-echo "=== Vulkan Info ==="
-vulkaninfo --summary 2>/dev/null || echo "vulkaninfo N/A"
-echo ""
-echo "=== OpenGL Info ==="
-glxinfo | grep "OpenGL renderer" 2>/dev/null || echo "glxinfo N/A"
-HELPER
-    chmod +x "$HOME/.local/bin/check-gpu"
-    
-    # AI workspace
-    cat > "$HOME/.local/bin/ai-workspace" <<'HELPER'
-#!/bin/bash
-echo "=== AI/ML Workspace ==="
-echo ""
-echo "📁 Directories:"
-echo "  - AI Projects: $HOME/AI-Projects"
-echo "  - AI Models: $HOME/AI-Models"
-echo ""
-echo "🤖 Tools:"
-echo "  - Ollama: ollama-start"
-echo "  - Stable Diffusion: sd-webui"
-echo "  - Text Generation: text-gen-webui"
-echo "  - ComfyUI: comfyui"
-HELPER
-    chmod +x "$HOME/.local/bin/ai-workspace"
-    
-    # Creative apps
-    cat > "$HOME/.local/bin/creative-apps" <<'HELPER'
-#!/bin/bash
-echo "=== Creative Suite ==="
-echo ""
-echo "🎨 Image: gimp, krita, darktable, rawtherapee"
-echo "🎬 Video: kdenlive, davinci-resolve"
-echo "✏️ Vector: inkscape, scribus"
-echo "🎵 Audio: audacity, ardour"
-echo "🔮 3D: blender"
-HELPER
-    chmod +x "$HOME/.local/bin/creative-apps"
-    
-    # Add more helpers as needed...
-    
-    # Add to PATH
-    grep -q ".local/bin" "$HOME/.bashrc" || \
-        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-    
-    mark_completed "helpers"
-    log "✓ Helper scripts created"
 }
 
 # ===== MAIN =====
@@ -1421,6 +1419,7 @@ main() {
     setup_directories
     setup_utilities
     setup_helper_scripts
+    setup_configs
     
     # Done
     echo ""
