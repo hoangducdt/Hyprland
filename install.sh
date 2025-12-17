@@ -727,6 +727,28 @@ setup_sddm() {
     log "✓ SDDM installed"
 }
 
+setup_gdm() {
+    if [ "$(is_completed 'gdm')" = "yes" ]; then
+        log "✓ GDM already installed"
+        return 0
+    fi
+    
+    log "Installing GDM..."
+    
+    # Cài đặt GDM
+    sudo pacman -S --needed --noconfirm gdm
+    
+    # Tắt các display manager khác nếu có
+    sudo systemctl disable sddm.service 2>/dev/null || true
+    sudo systemctl disable lightdm.service 2>/dev/null || true
+    
+    # Bật GDM
+    sudo systemctl enable gdm.service
+    
+    mark_completed "gdm"
+    log "✓ GDM installed and enabled"
+}
+
 setup_directories() {
     if [ "$(is_completed 'directories')" = "yes" ]; then
         log "✓ Directories already created"
@@ -753,7 +775,6 @@ setup_directories() {
 
     # Thêm bookmarks vào Nautilus
     cat >> ~/.config/gtk-3.0/bookmarks <<EOF
-file://$HOME/Desktop
 file://$HOME/Downloads
 file://$HOME/Documents
 file://$HOME/Pictures
@@ -997,11 +1018,11 @@ STATIC_IP
     fi
     
     # Add theme config
-    sudo mkdir -p /etc/sddm.conf.d
-    sudo tee /etc/sddm.conf.d/theme.conf > /dev/null <<SDDM_CONF
-[Theme]
-Current=sugar-candy
-SDDM_CONF
+    #sudo mkdir -p /etc/sddm.conf.d
+    #sudo tee /etc/sddm.conf.d/theme.conf > /dev/null <<SDDM_CONF
+#[Theme]
+#Current=sugar-candy
+#SDDM_CONF
 
     # Add environment variables
     mkdir -p "$HOME/.config/hypr/hyprland"
@@ -1067,7 +1088,7 @@ MISC
             "scale": 1
         },
         "rounding": {
-            "scale": 1
+            "scale": 2
         },
         "spacing": {
             "scale": 1
@@ -1236,7 +1257,7 @@ MISC
     },
     "border": {
         "rounding": 25,
-        "thickness": 10
+        "thickness": 2.5
     },
     "dashboard": {
         "enabled": true,
@@ -1331,7 +1352,7 @@ MISC
                 "name": "Logout",
                 "icon": "exit_to_app",
                 "description": "Log out of the current session",
-                "command": ["hyprctl", "dispatch", "exit"],
+                "command": ["loginctl", "terminate-user", ""],
                 "enabled": true,
                 "dangerous": true
             },
@@ -1406,7 +1427,7 @@ MISC
         "enabled": true,
         "vimKeybinds": false,
         "commands": {
-            "logout": ["hyprctl", "dispatch", "exit"],
+            "logout": ["loginctl", "terminate-user", ""],
             "shutdown": ["systemctl", "poweroff"],
             "hibernate": ["systemctl", "hibernate"],
             "reboot": ["systemctl", "reboot"]
@@ -1543,7 +1564,8 @@ main() {
     setup_system_optimization
     setup_monitors
     setup_vietnamese_input
-    setup_sddm
+    #setup_sddm
+    setup_gdm
     setup_directories
     setup_utilities
     setup_helper_scripts
