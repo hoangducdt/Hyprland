@@ -1339,7 +1339,55 @@ setup_helper_scripts() {
     
     mkdir -p "$HOME/.local/bin"
     
-    # Scripts truncated for brevity
+    # GPU check
+    cat > "$HOME/.local/bin/check-gpu" <<'HELPER'
+#!/bin/bash
+echo "=== NVIDIA GPU Status ==="
+nvidia-smi
+echo ""
+echo "=== Vulkan Info ==="
+vulkaninfo --summary 2>/dev/null || echo "vulkaninfo N/A"
+echo ""
+echo "=== OpenGL Info ==="
+glxinfo | grep "OpenGL renderer" 2>/dev/null || echo "glxinfo N/A"
+HELPER
+    chmod +x "$HOME/.local/bin/check-gpu"
+    
+    # AI workspace
+    cat > "$HOME/.local/bin/ai-workspace" <<'HELPER'
+#!/bin/bash
+echo "=== AI/ML Workspace ==="
+echo ""
+echo "📁 Directories:"
+echo "  - AI Projects: $HOME/AI-Projects"
+echo "  - AI Models: $HOME/AI-Models"
+echo ""
+echo "🤖 Tools:"
+echo "  - Ollama: ollama-start"
+echo "  - Stable Diffusion: sd-webui"
+echo "  - Text Generation: text-gen-webui"
+echo "  - ComfyUI: comfyui"
+HELPER
+    chmod +x "$HOME/.local/bin/ai-workspace"
+    
+    # Creative apps
+    cat > "$HOME/.local/bin/creative-apps" <<'HELPER'
+#!/bin/bash
+echo "=== Creative Suite ==="
+echo ""
+echo "🎨 Image: gimp, krita, darktable, rawtherapee"
+echo "🎬 Video: kdenlive, davinci-resolve"
+echo "✏️ Vector: inkscape, scribus"
+echo "🎵 Audio: audacity, ardour"
+echo "🔮 3D: blender"
+HELPER
+    chmod +x "$HOME/.local/bin/creative-apps"
+    
+    # Add more helpers as needed...
+    
+    # Add to PATH
+    grep -q ".local/bin" "$HOME/.bashrc" || \
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
     
     mark_completed "helpers"
     log "✓ Helper scripts created"
