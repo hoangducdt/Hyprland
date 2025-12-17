@@ -318,7 +318,7 @@ setup_nvidia_drivers() {
     # Backup mkinitcpio.conf
     backup_file "/etc/mkinitcpio.conf"
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "nvidia-dkms" "nvidia-utils" "lib32-nvidia-utils" \
         "nvidia-settings" "opencl-nvidia" "lib32-opencl-nvidia" \
         "libva-nvidia-driver" "egl-wayland"
@@ -348,7 +348,7 @@ setup_base_packages() {
     
     log "Installing base packages..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "base-devel" "git" "wget" "curl" "yay" "fish" \
         "wl-clipboard" "xdg-desktop-portal-hyprland" \
         "qt5-wayland" "qt6-wayland" \
@@ -409,7 +409,7 @@ setup_gaming() {
     
     log "Installing gaming packages..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "cachyos-gaming-meta" "cachyos-gaming-applications" \
         "wine-staging" \
         "lib32-mangohud" "gamemode" "lib32-gamemode"
@@ -426,7 +426,7 @@ setup_development() {
     
     log "Installing development tools..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "dotnet-sdk" "dotnet-runtime" "aspnet-runtime" "mono" "mono-msbuild" \
         "code" "neovim" "docker" "docker-compose" "git" "github-cli"
     
@@ -451,7 +451,7 @@ setup_unreal_engine_deps() {
     
     log "Installing Unreal Engine dependencies..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "clang" "make" "cmake" "ninja" "vulkan-devel" "vulkan-tools" \
         "vulkan-validation-layers" "lib32-vulkan-icd-loader" "icu" \
         "openal" "lib32-openal" "libpulse" "lib32-libpulse" \
@@ -481,7 +481,7 @@ setup_multimedia() {
     
     log "Installing multimedia packages..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "ffmpeg" "gstreamer" "gst-plugins-base" "gst-plugins-good" \
         "gst-plugins-bad" "gst-plugins-ugly" \
         "libvorbis" "lib32-libvorbis" "opus" "lib32-opus" \
@@ -501,7 +501,7 @@ setup_ai_ml() {
     
     ai_info "Installing AI/ML stack..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "cuda" "cudnn" "python-pytorch-cuda" \
         "python" "python-pip" "python-virtualenv" \
         "python-numpy" "python-pandas" "jupyter-notebook" \
@@ -565,7 +565,7 @@ setup_blender() {
     
     creative_info "Installing Blender..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "blender" "openimagedenoise" "opencolorio" "opensubdiv" \
         "openvdb" "embree" "openimageio" "alembic" "openjpeg2" \
         "openexr" "libspnav"
@@ -584,7 +584,7 @@ setup_creative_suite() {
     
     creative_info "Installing creative suite..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "gimp" "gimp-plugin-gmic" \
         "krita" "inkscape" \
         "kdenlive" "frei0r-plugins" "mediainfo" "mlt" \
@@ -607,7 +607,7 @@ setup_streaming() {
     
     log "Installing streaming tools..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "v4l2loopback-dkms" "pipewire" "pipewire-pulse" \
         "wireplumber" "gstreamer-vaapi"
     
@@ -691,7 +691,7 @@ setup_vietnamese_input() {
     
     log "Installing Vietnamese input..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "fcitx5" "fcitx5-qt" "fcitx5-gtk" "fcitx5-configtool"
     
     install_aur_package "fcitx5-bamboo-git" 600
@@ -746,7 +746,7 @@ setup_sddm() {
     
     log "Installing SDDM..."
     
-    install_packages \
+    sudo pacman -S --needed --noconfirm \
         "sddm" "qt5-graphicaleffects" "qt5-quickcontrols2" "qt5-svg" "uwsm"
     
     sudo systemctl enable sddm.service 2>/dev/null || true
@@ -787,11 +787,11 @@ setup_utilities() {
     
     log "Installing utilities..."
     
-    install_packages \
-        "htop" "btop" "neofetch" "fastfetch" \
-        "unzip" "p7zip" "unrar" "rsync" "tmux" \
-        "starship" "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" \
-        "nvtop" "amdgpu_top" "iotop" "iftop"
+    sudo pacman -S --needed --noconfirm \
+        htop btop neofetch fastfetch \
+        unzip p7zip unrar rsync tmux \
+        starship eza bat ripgrep fd fzf zoxide \
+        nvtop amdgpu_top iotop iftop
     
     install_aur_package "openrgb" 600
     
