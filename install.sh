@@ -750,7 +750,17 @@ setup_directories() {
 
     install_aur_package "nautilus-open-any-terminal" 900
     gsettings set com.github.stunkymonkey.nautilus-open-any-terminal terminal foot
-    
+
+    # Thêm bookmarks vào Nautilus
+    cat >> ~/.config/gtk-3.0/bookmarks <<EOF
+file://$HOME/Desktop
+file://$HOME/Downloads
+file://$HOME/Documents
+file://$HOME/Pictures
+file://$HOME/Videos
+file://$HOME/Music
+EOF
+
     mark_completed "directories"
     log "✓ Directories created"
 }
