@@ -41,7 +41,33 @@ echo -e "${NC}"
 [ "$EUID" -eq 0 ] && error "KHÔNG chạy với sudo"
 
 log "Starting complete installation..."
+
+[ "$EUID" -eq 0 ] && error "KHÔNG chạy với sudo"
+
+# ===== QUAN TRỌNG: XIN SUDO 1 LẦN DUY NHẤT Ở ĐẦU =====
 echo ""
+echo -e "${YELLOW}Script cần quyền sudo để cài đặt packages.${NC}"
+echo -e "${YELLOW}Vui lòng nhập password 1 LẦN DUY NHẤT:${NC}"
+echo ""
+
+if ! sudo -v; then
+    error "Không có quyền sudo. Thoát."
+fi
+
+# Keep sudo alive - tự động refresh sudo mỗi 60s
+(
+    while true; do
+        sudo -n true
+        sleep 60
+        kill -0 "$$" || exit
+    done 2>/dev/null
+) &
+SUDO_REFRESH_PID=$!
+
+# Cleanup khi script kết thúc
+trap "kill $SUDO_REFRESH_PID 2>/dev/null" EXIT
+
+log "✓ Sudo access granted"
 log "Estimated time: 30-60 minutes"
 echo ""
 
@@ -318,7 +344,7 @@ setup_nvidia_drivers() {
     # Backup mkinitcpio.conf
     backup_file "/etc/mkinitcpio.conf"
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "nvidia-dkms" "nvidia-utils" "lib32-nvidia-utils" \
         "nvidia-settings" "opencl-nvidia" "lib32-opencl-nvidia" \
         "libva-nvidia-driver" "egl-wayland"
@@ -348,7 +374,7 @@ setup_base_packages() {
     
     log "Installing base packages..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "base-devel" "git" "wget" "curl" "yay" "fish" \
         "wl-clipboard" "xdg-desktop-portal-hyprland" \
         "qt5-wayland" "qt6-wayland" \
@@ -409,7 +435,7 @@ setup_gaming() {
     
     log "Installing gaming packages..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "cachyos-gaming-meta" "cachyos-gaming-applications" \
         "wine-staging" \
         "lib32-mangohud" "gamemode" "lib32-gamemode"
@@ -426,7 +452,7 @@ setup_development() {
     
     log "Installing development tools..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "dotnet-sdk" "dotnet-runtime" "aspnet-runtime" "mono" "mono-msbuild" \
         "code" "neovim" "docker" "docker-compose" "git" "github-cli"
     
@@ -451,7 +477,7 @@ setup_unreal_engine_deps() {
     
     log "Installing Unreal Engine dependencies..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "clang" "make" "cmake" "ninja" "vulkan-devel" "vulkan-tools" \
         "vulkan-validation-layers" "lib32-vulkan-icd-loader" "icu" \
         "openal" "lib32-openal" "libpulse" "lib32-libpulse" \
@@ -481,7 +507,7 @@ setup_multimedia() {
     
     log "Installing multimedia packages..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "ffmpeg" "gstreamer" "gst-plugins-base" "gst-plugins-good" \
         "gst-plugins-bad" "gst-plugins-ugly" \
         "libvorbis" "lib32-libvorbis" "opus" "lib32-opus" \
@@ -501,7 +527,7 @@ setup_ai_ml() {
     
     ai_info "Installing AI/ML stack..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "cuda" "cudnn" "python-pytorch-cuda" \
         "python" "python-pip" "python-virtualenv" \
         "python-numpy" "python-pandas" "jupyter-notebook" \
@@ -565,7 +591,7 @@ setup_blender() {
     
     creative_info "Installing Blender..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "blender" "openimagedenoise" "opencolorio" "opensubdiv" \
         "openvdb" "embree" "openimageio" "alembic" "openjpeg2" \
         "openexr" "libspnav"
@@ -584,7 +610,7 @@ setup_creative_suite() {
     
     creative_info "Installing creative suite..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "gimp" "gimp-plugin-gmic" \
         "krita" "inkscape" \
         "kdenlive" "frei0r-plugins" "mediainfo" "mlt" \
@@ -607,7 +633,7 @@ setup_streaming() {
     
     log "Installing streaming tools..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "v4l2loopback-dkms" "pipewire" "pipewire-pulse" \
         "wireplumber" "gstreamer-vaapi"
     
@@ -674,22 +700,10 @@ setup_monitors() {
     mkdir -p "$HOME/.config/hypr/hyprland"
     
     # Monitor configuration
-    cat > "$HOME/.config/hypr/hyprland/monitors.conf" <<'MONITORS'
+    cat >> "$HOME/.config/hypr/hyprland/monitors.conf" <<'MONITORS'
 monitor=DP-1,2560x1080@99.94,0x0,1.0
 monitor=DP-3,1920x1080@74.97,2560x0,1.0
 MONITORS
-    
-    # Add source to hyprland.conf if not exists
-    local hypr_conf="$HOME/.config/hypr/hyprland.conf"
-    
-    if [ -f "$hypr_conf" ]; then
-        if ! grep -q 'source = $hl/monitors.conf' "$hypr_conf"; then
-            echo 'source = $hl/monitors.conf' >> "$hypr_conf"
-            log "Added monitors.conf source to hyprland.conf"
-        fi
-    else
-        warn "hyprland.conf not found at $hypr_conf"
-    fi
     
     mark_completed "monitors"
     log "✓ Multi-monitor configured"
@@ -703,7 +717,7 @@ setup_vietnamese_input() {
     
     log "Installing Vietnamese input..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "fcitx5" "fcitx5-qt" "fcitx5-gtk" "fcitx5-configtool"
     
     install_aur_package "fcitx5-bamboo-git" 600
@@ -758,29 +772,8 @@ setup_sddm() {
     
     log "Installing SDDM..."
     
-    sudo pacman -S --needed --noconfirm \
+    install_packages \
         "sddm" "qt5-graphicaleffects" "qt5-quickcontrols2" "qt5-svg" "uwsm"
-    
-    sudo mkdir -p /usr/share/sddm/themes
-cd /tmp
-rm -rf sddm-sugar-candy
-git clone --depth 1 https://github.com/Kangie/sddm-sugar-candy.git 2>/dev/null || warn "Sugar Candy clone skip"
-
-if [ -d "sddm-sugar-candy" ]; then
-    sudo cp -r sddm-sugar-candy /usr/share/sddm/themes/sugar-candy
-fi
-
-sudo mkdir -p /etc/sddm.conf.d
-sudo tee /etc/sddm.conf.d/theme.conf > /dev/null <<SDDM_CONF
-[Theme]
-Current=sugar-candy
-
-[General]
-DisplayServer=wayland
-
-[Wayland]
-SessionDir=/usr/share/wayland-sessions
-SDDM_CONF
     
     sudo systemctl enable sddm.service 2>/dev/null || true
     
@@ -801,486 +794,12 @@ setup_directories() {
     mkdir -p "$HOME"/{AI-Projects,AI-Models,Creative-Projects,Blender-Projects}
     mkdir -p "$HOME/.local/bin"
     mkdir -p "$HOME/.config/hypr/scripts"
-    mkdir -p "$HOME/.config/caelestia"
     
     # Wallpapers
     if [ ! -d "$HOME/Pictures/Wallpapers/.git" ]; then
         git clone --quiet --depth 1 https://github.com/mylinuxforwork/wallpaper.git \
             "$HOME/Pictures/Wallpapers" 2>&1 | tee -a "$LOG" || warn "Wallpapers clone failed"
     fi
-    
-    # Create Caelestia config files
-    log "Creating Caelestia config files..."
-    
-    # shell.json
-    cat > "$HOME/.config/caelestia/shell.json" <<'SHELL_JSON'
-{
-    "appearance": {
-        "anim": {
-            "durations": {
-                "scale": 1
-            }
-        },
-        "font": {
-            "family": {
-                "clock": "Rubik",
-                "material": "Material Symbols Rounded",
-                "mono": "CaskaydiaCove NF",
-                "sans": "Rubik"
-            },
-            "size": {
-                "scale": 1
-            }
-        },
-        "padding": {
-            "scale": 1
-        },
-        "rounding": {
-            "scale": 1
-        },
-        "spacing": {
-            "scale": 1
-        },
-        "transparency": {
-            "enabled": false,
-            "base": 0.85,
-            "layers": 0.4
-        }
-    },
-    "general": {
-        "apps": {
-            "terminal": ["foot"],
-            "audio": ["pavucontrol"],
-            "playback": ["mpv"],
-            "explorer": ["thunar"]
-        },
-        "battery": {
-            "warnLevels": [
-                {
-                    "level": 20,
-                    "title": "Low battery",
-                    "message": "You might want to plug in a charger",
-                    "icon": "battery_android_frame_2"
-                },
-                {
-                    "level": 10,
-                    "title": "Did you see the previous message?",
-                    "message": "You should probably plug in a charger <b>now</b>",
-                    "icon": "battery_android_frame_1"
-                },
-                {
-                    "level": 5,
-                    "title": "Critical battery level",
-                    "message": "PLUG THE CHARGER RIGHT NOW!!",
-                    "icon": "battery_android_alert",
-                    "critical": true
-                }
-            ],
-            "criticalLevel": 3
-        },
-        "idle": {
-            "lockBeforeSleep": true,
-            "inhibitWhenAudio": true,
-            "timeouts": [
-                {
-                    "timeout": 180,
-                    "idleAction": "lock"
-                },
-                {
-                    "timeout": 300,
-                    "idleAction": "dpms off",
-                    "returnAction": "dpms on"
-                },
-                {
-                    "timeout": 600,
-                    "idleAction": ["systemctl", "suspend-then-hibernate"]
-                }
-            ]
-        }
-    },
-    "background": {
-        "desktopClock": {
-            "enabled": false
-        },
-        "enabled": true,
-        "visualiser": {
-            "blur": false,
-            "enabled": false,
-            "autoHide": true,
-            "rounding": 1,
-            "spacing": 1
-        }
-    },
-    "bar": {
-        "clock": {
-            "showIcon": true
-        },
-        "dragThreshold": 20,
-        "entries": [
-            {
-                "id": "logo",
-                "enabled": true
-            },
-            {
-                "id": "workspaces",
-                "enabled": true
-            },
-            {
-                "id": "spacer",
-                "enabled": true
-            },
-            {
-                "id": "activeWindow",
-                "enabled": true
-            },
-            {
-                "id": "spacer",
-                "enabled": true
-            },
-            {
-                "id": "tray",
-                "enabled": true
-            },
-            {
-                "id": "clock",
-                "enabled": true
-            },
-            {
-                "id": "statusIcons",
-                "enabled": true
-            },
-            {
-                "id": "power",
-                "enabled": true
-            }
-        ],
-        "persistent": true,
-        "popouts": {
-            "activeWindow": true,
-            "statusIcons": true,
-            "tray": true
-        },
-        "scrollActions": {
-            "brightness": true,
-            "workspaces": true,
-            "volume": true
-        },
-        "showOnHover": true,
-        "status": {
-            "showAudio": false,
-            "showBattery": true,
-            "showBluetooth": true,
-            "showKbLayout": false,
-            "showMicrophone": false,
-            "showNetwork": true,
-            "showLockStatus": true
-        },
-        "tray": {
-            "background": false,
-            "compact": false,
-            "iconSubs": [],
-            "recolour": false
-        },
-        "workspaces": {
-            "activeIndicator": true,
-            "activeLabel": "⬤",
-            "activeTrail": false,
-            "label": "󰄰 ",
-            "occupiedBg": false,
-            "occupiedLabel": "⬤",
-            "perMonitorWorkspaces": true,
-            "showWindows": true,
-            "shown": 5,
-            "specialWorkspaceIcons": [
-                {
-                    "name": "steam",
-                    "icon": "sports_esports"
-                }
-            ]
-        },
-        "excludedScreens": [""],
-        "activeWindow": {
-            "inverted": false
-        }
-    },
-    "border": {
-        "rounding": 25,
-        "thickness": 10
-    },
-    "dashboard": {
-        "enabled": true,
-        "dragThreshold": 50,
-        "mediaUpdateInterval": 500,
-        "showOnHover": true
-    },
-    "launcher": {
-        "actionPrefix": ">",
-        "actions": [
-            {
-                "name": "Calculator",
-                "icon": "calculate",
-                "description": "Do simple math equations (powered by Qalc)",
-                "command": ["autocomplete", "calc"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Scheme",
-                "icon": "palette",
-                "description": "Change the current colour scheme",
-                "command": ["autocomplete", "scheme"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Wallpaper",
-                "icon": "image",
-                "description": "Change the current wallpaper",
-                "command": ["autocomplete", "wallpaper"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Variant",
-                "icon": "colors",
-                "description": "Change the current scheme variant",
-                "command": ["autocomplete", "variant"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Transparency",
-                "icon": "opacity",
-                "description": "Change shell transparency",
-                "command": ["autocomplete", "transparency"],
-                "enabled": false,
-                "dangerous": false
-            },
-            {
-                "name": "Random",
-                "icon": "casino",
-                "description": "Switch to a random wallpaper",
-                "command": ["caelestia", "wallpaper", "-r"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Light",
-                "icon": "light_mode",
-                "description": "Change the scheme to light mode",
-                "command": ["setMode", "light"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Dark",
-                "icon": "dark_mode",
-                "description": "Change the scheme to dark mode",
-                "command": ["setMode", "dark"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Shutdown",
-                "icon": "power_settings_new",
-                "description": "Shutdown the system",
-                "command": ["systemctl", "poweroff"],
-                "enabled": true,
-                "dangerous": true
-            },
-            {
-                "name": "Reboot",
-                "icon": "cached",
-                "description": "Reboot the system",
-                "command": ["systemctl", "reboot"],
-                "enabled": true,
-                "dangerous": true
-            },
-            {
-                "name": "Logout",
-                "icon": "exit_to_app",
-                "description": "Log out of the current session",
-                "command": ["hyprctl", "dispatch", "exit"],
-                "enabled": true,
-                "dangerous": true
-            },
-            {
-                "name": "Lock",
-                "icon": "lock",
-                "description": "Lock the current session",
-                "command": ["loginctl", "lock-session"],
-                "enabled": true,
-                "dangerous": false
-            },
-            {
-                "name": "Sleep",
-                "icon": "bedtime",
-                "description": "Suspend then hibernate",
-                "command": ["systemctl", "suspend-then-hibernate"],
-                "enabled": true,
-                "dangerous": false
-            }
-        ],
-        "dragThreshold": 50,
-        "vimKeybinds": false,
-        "enableDangerousActions": false,
-        "maxShown": 7,
-        "maxWallpapers": 9,
-        "specialPrefix": "@",
-        "useFuzzy": {
-            "apps": false,
-            "actions": false,
-            "schemes": false,
-            "variants": false,
-            "wallpapers": false
-        },
-        "showOnHover": false,
-        "hiddenApps": []
-    },
-    "lock": {
-        "recolourLogo": false
-    },
-    "notifs": {
-        "actionOnClick": false,
-        "clearThreshold": 0.3,
-        "defaultExpireTimeout": 5000,
-        "expandThreshold": 20,
-        "expire": false
-    },
-    "osd": {
-        "enabled": true,
-        "enableBrightness": true,
-        "enableMicrophone": false,
-        "hideDelay": 2000
-    },
-    "paths": {
-        "mediaGif": "root:/assets/bongocat.gif",
-        "sessionGif": "root:/assets/kurukuru.gif",
-        "wallpaperDir": "~/Pictures/Wallpapers"
-    },
-    "services": {
-        "audioIncrement": 0.1,
-        "maxVolume": 1.0,
-        "defaultPlayer": "Spotify",
-        "gpuType": "",
-        "playerAliases": [{ "from": "com.github.th_ch.youtube_music", "to": "YT Music" }],
-        "weatherLocation": "",
-        "useFahrenheit": false,
-        "useTwelveHourClock": false,
-        "smartScheme": true,
-        "visualiserBars": 45
-    },
-    "session": {
-        "dragThreshold": 30,
-        "enabled": true,
-        "vimKeybinds": false,
-        "commands": {
-            "logout": ["hyprctl", "dispatch", "exit"],
-            "shutdown": ["systemctl", "poweroff"],
-            "hibernate": ["systemctl", "hibernate"],
-            "reboot": ["systemctl", "reboot"]
-        }
-    },
-    "sidebar": {
-        "dragThreshold": 80,
-        "enabled": true
-    },
-    "utilities": {
-        "enabled": true,
-        "maxToasts": 4,
-        "toasts": {
-            "audioInputChanged": true,
-            "audioOutputChanged": true,
-            "capsLockChanged": true,
-            "chargingChanged": true,
-            "configLoaded": true,
-            "dndChanged": true,
-            "gameModeChanged": true,
-            "kbLayoutChanged": true,
-            "numLockChanged": true,
-            "vpnChanged": true,
-            "nowPlaying": false
-        },
-        "vpn": {
-            "enabled": false,
-            "provider": [
-                {
-                    "name": "wireguard",
-                    "interface": "your-connection-name",
-                    "displayName": "Wireguard (Your VPN)"
-                }
-            ]
-        }
-    }
-}
-SHELL_JSON
-    
-    # cli.json
-    cat > "$HOME/.config/caelestia/cli.json" <<'CLI_JSON'
-{
-    "record": {
-        "extraArgs": []
-    },
-    "wallpaper": {
-        "postHook": "echo $WALLPAPER_PATH"  
-    },
-    "theme": {
-        "enableTerm": true,
-        "enableHypr": true,
-        "enableDiscord": true,
-        "enableSpicetify": true,
-        "enableFuzzel": true,
-        "enableBtop": true,
-        "enableGtk": true,
-        "enableQt": true
-    },
-    "toggles": {
-        "communication": {
-            "discord": {
-                "enable": true,
-                "match": [{ "class": "discord" }],
-                "command": ["discord"],
-                "move": true
-            },
-            "whatsapp": {
-                "enable": true,
-                "match": [{ "class": "whatsapp" }],
-                "move": true
-            }
-        },
-        "music": {
-            "spotify": {
-                "enable": true,
-                "match": [{ "class": "Spotify" }, { "initialTitle": "Spotify" }, { "initialTitle": "Spotify Free" }],
-                "command": ["spicetify", "watch", "-s"],
-                "move": true
-            },
-            "feishin": {
-                "enable": true,
-                "match": [{ "class": "feishin" }],
-                "move": true
-            }
-        },
-        "sysmon": {
-            "btop": {
-                "enable": true,
-                "match": [{ "class": "btop", "title": "btop", "workspace": { "name": "special:sysmon" } }],
-                "command": ["foot", "-a", "btop", "-T", "btop", "fish", "-C", "exec btop"]
-            }
-        },
-        "todo": {
-            "todoist": {
-                "enable": true,
-                "match": [{ "class": "Todoist" }],
-                "command": ["todoist"],
-                "move": true
-            }
-        }
-    }
-}
-CLI_JSON
-    
-    log "✓ Caelestia config files created"
     
     mark_completed "directories"
     log "✓ Directories created"
@@ -1294,11 +813,11 @@ setup_utilities() {
     
     log "Installing utilities..."
     
-    sudo pacman -S --needed --noconfirm \
-        htop btop neofetch fastfetch \
-        unzip p7zip unrar rsync tmux \
-        starship eza bat ripgrep fd fzf zoxide \
-        nvtop amdgpu_top iotop iftop
+    install_packages \
+        "htop" "btop" "neofetch" "fastfetch" \
+        "unzip" "p7zip" "unrar" "rsync" "tmux" \
+        "starship" "eza" "bat" "ripgrep" "fd" "fzf" "zoxide" \
+        "nvtop" "amdgpu_top" "iotop" "iftop"
     
     install_aur_package "openrgb" 600
     
