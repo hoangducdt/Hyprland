@@ -682,8 +682,6 @@ setup_monitors() {
     install_packages "wlr-randr" "kanshi"
     install_aur_package "nwg-displays" 600
     
-    mkdir -p "$HOME/.config/hypr/hyprland"
-    
     mark_completed "monitors"
     log "✓ Multi-monitor configured"
 }
@@ -780,6 +778,8 @@ setup_directories() {
     mkdir -p "$HOME/.config/hypr/scripts"
     mkdir -p "$HOME/.config/caelestia"
     mkdir -p "$HOME/OneDrive"
+    mkdir -p "$HOME/.config/hypr/hyprland"
+    mkdir -p "$HOME/.config/fastfetch/logo"
     
     # Wallpapers
     if [ ! -d "$HOME/Pictures/Wallpapers/.git" ]; then
@@ -789,8 +789,7 @@ setup_directories() {
 
     install_aur_package "nautilus-open-any-terminal" 900
     gsettings set com.github.stunkymonkey.nautilus-open-any-terminal terminal kitty
-
-    mkdir -p "$HOME/.config/fastfetch/logo"
+    
     curl -L -o "$HOME/.face" https://raw.githubusercontent.com/hoangducdt/caelestia/main/.face.png
     curl -L -o "$HOME/.config/fastfetch/logo/aisaka.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/aisaka.icon
     curl -L -o "$HOME/.config/fastfetch/logo/hyprland.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/hyprland.icon
@@ -1058,8 +1057,7 @@ STATIC_IP
 #SDDM_CONF
 
     # Add environment variables
-    mkdir -p "$HOME/.config/hypr/hyprland"
-    cat >> "$HOME/.config/hypr/hyprland/env.conf" <<'FCITX'
+    cat >> "$HOME/.config/hypr/hyprland/env.conf" <<'NVIDIA_ENV'
 
 # NVIDIA Environment Variables
 env = LIBVA_DRIVER_NAME,nvidia
@@ -1067,12 +1065,15 @@ env = XDG_SESSION_TYPE,wayland
 env = GBM_BACKEND,nvidia-drm
 env = __GLX_VENDOR_LIBRARY_NAME,nvidia
 env = WLR_NO_HARDWARE_CURSORS,1
+NVIDIA_ENV
+    
+    cat >> "$HOME/.config/hypr/hyprland/env.conf" <<'FCITX_ENV'
 
 # Vietnamese Input - Fcitx5
 env = XMODIFIERS,@im=fcitx
 env = SDL_IM_MODULE,fcitx
 env = GLFW_IM_MODULE,fcitx
-FCITX
+FCITX_ENV
     
     # Add autostart
     if [ -f "$HOME/.config/hypr/hyprland/execs.conf" ]; then
@@ -1566,7 +1567,7 @@ SHELL_JSON
 CLI_JSON
 
     # config.jsonc
-    cat > "$HOME/.config/fastfetch/config.jsonc" <<'CLI_JSON'
+    cat > "$HOME/.config/fastfetch/config.jsonc" <<'FASTFETCH_CONFIG_JSON'
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {
@@ -1582,7 +1583,7 @@ CLI_JSON
     {
       "type": "title",
       "key": "  ",
-      "format": "Work smart - Don't work hard!"
+      "format": "Don't work hard - Work smart!"
     },
     {
       "type": "custom",
@@ -1688,16 +1689,16 @@ CLI_JSON
     "break"
   ]
 }
-CLI_JSON
+FASTFETCH_CONFIG_JSON
 
-    cat > "$HOME/.config/fish/functions/fish_greeting.fish" << 'SETUP_SCRIPT'
+    cat > "$HOME/.config/fish/functions/fish_greeting.fish" << 'FISH_SCRIPT'
 function fish_greeting
     set_color normal
     fastfetch --logo-type kitty
 end
-SETUP_SCRIPT
+FISH_SCRIPT
 
-    cat > "$HOME/.config/fastfetch/fastfetch.sh" << 'SETUP_SCRIPT'
+    cat > "$HOME/.config/fastfetch/fastfetch.sh" << 'FASTFETCH_LOGO_SCRIPT'
 if [ -z "${*}" ]; then
   clear
   exec fastfetch --logo-type kitty
@@ -1783,9 +1784,126 @@ help | --help | -h)
   exec fastfetch --logo-type kitty
   ;;
 esac
-SETUP_SCRIPT
+FASTFETCH_LOGO_SCRIPT
 
     chmod +x $HOME/.config/fastfetch/fastfetch.sh
+
+    cat > "$HOME/.config/kitty/kitty.conf" <<'KITTY_CONFIG'
+# This is the configuration file for kitty terminal
+# For more information, see https://sw.kovidgoyal.net/kitty/conf.html
+# For your custom configurations, put it in ./kitty.conf
+#font_family CaskaydiaCove Nerd Font Mono
+#bold_font auto
+#italic_font auto
+#bold_italic_font auto
+#enable_audio_bell no
+#font_size 9.0
+#window_padding_width 25
+#cursor_trail 1
+
+# Themes can override any settings in this file
+include theme.conf
+background_opacity 0.60
+#hide_window_decorations yes
+#confirm_os_window_close 0
+
+# Minimal Tab bar styling 
+tab_bar_edge                bottom
+tab_bar_style               powerline
+tab_powerline_style         slanted
+tab_title_template          {title}{' :{}:'.format(num_windows) if num_windows > 1 else ''}
+
+# remap to open new kitty tab in the same directory (default is home dir)
+# map ctrl+shift+t            new_tab_with_cwd
+
+# Uncomment the following 4 lines to minimize kitty latency (higher energy usage)
+# input_delay 0
+# repaint_delay 2
+# sync_to_monitor no
+# wayland_enable_ime no
+KITTY_CONFIG
+
+    cat > "$HOME/.config/kitty/theme.conf" <<'KITTY_THEMES'
+
+## name:     Catppuccin Mocha 🌿
+## author:   Pocco81 (https://github.com/Pocco81)
+## license:  MIT
+## upstream: https://github.com/catppuccin/kitty/blob/main/mocha.conf
+## blurb:    Soothing pastel theme for the high-spirited!
+
+
+
+# The basic colors
+foreground              #CDD6F4
+background              #1E1E2E
+selection_foreground    #1E1E2E
+selection_background    #F5E0DC
+
+# Cursor colors
+cursor                  #F5E0DC
+cursor_text_color       #1E1E2E
+
+# URL underline color when hovering with mouse
+url_color               #B4BEFE
+
+# Kitty window border colors
+active_border_color     #CBA6F7
+inactive_border_color   #8E95B3
+bell_border_color       #EBA0AC
+
+# OS Window titlebar colors
+wayland_titlebar_color system
+macos_titlebar_color system
+
+# Tab bar colors
+active_tab_foreground   #11111B
+active_tab_background   #CBA6F7
+inactive_tab_foreground #CDD6F4
+inactive_tab_background #181825
+tab_bar_background      #11111B
+
+# Colors for marks (marked text in the terminal)
+mark1_foreground #1E1E2E
+mark1_background #87B0F9
+mark2_foreground #1E1E2E
+mark2_background #CBA6F7
+mark3_foreground #1E1E2E
+mark3_background #74C7EC
+
+# The 16 terminal colors
+
+# black
+color0 #43465A
+color8 #43465A
+
+# red
+color1 #F38BA8
+color9 #F38BA8
+
+# green
+color2  #A6E3A1
+color10 #A6E3A1
+
+# yellow
+color3  #F9E2AF
+color11 #F9E2AF
+
+# blue
+color4  #87B0F9
+color12 #87B0F9
+
+# magenta
+color5  #F5C2E7
+color13 #F5C2E7
+
+# cyan
+color6  #94E2D5
+color14 #94E2D5
+
+# white
+color7  #CDD6F4
+color15 #A1A8C9
+KITTY_THEMES
 
 }
 
