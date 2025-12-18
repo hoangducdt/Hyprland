@@ -377,8 +377,7 @@ setup_base_packages() {
         "qt5-wayland" "qt6-wayland" \
         "gnome-keyring" "polkit-gnome" \
         "gnome-disk-utility" "kitty" \
-        "tumbler" "ffmpegthumbnailer" "libgsf"
-        #"nautilus"
+        "tumbler" "ffmpegthumbnailer" "libgsf" "thunar"
     
     mark_completed "base_packages"
     log "✓ Base packages installed"
