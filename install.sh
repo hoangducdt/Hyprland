@@ -775,7 +775,8 @@ setup_directories() {
     curl -L -o "$HOME/.config/fastfetch/logo/hyprland.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/hyprland.icon
     curl -L -o "$HOME/.config/fastfetch/logo/loli.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/loli.icon
     
-
+    chmod 644 ~/.face
+    
     # Thêm bookmarks vào Nautilus
     cat >> ~/.config/gtk-3.0/bookmarks <<EOF
 file://$HOME/Downloads
