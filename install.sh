@@ -782,6 +782,8 @@ setup_directories() {
     mkdir -p "$HOME/OneDrive"
     mkdir -p "$HOME/.config/hypr/hyprland"
     mkdir -p "$HOME/.config/fastfetch/logo"
+mkdir -p "$HOME/.config/kitty"
+mkdir -p "$HOME/.config/xfce"
     
     # Wallpapers
     if [ ! -d "$HOME/Pictures/Wallpapers/.git" ]; then
