@@ -454,7 +454,8 @@ setup_development() {
     sudo pacman -S --needed --noconfirm \
         "dotnet-sdk" "dotnet-runtime" "dotnet-sdk-9.0" "dotnet-sdk-8.0" \
         "aspnet-runtime" "mono" "mono-msbuild" \
-        "code" "neovim" "docker" "docker-compose" "git" "github-cli"
+        "neovim" "docker" "docker-compose" "git" "github-cli" "codium"
+        #"code"
 
     dotnet new install Avalonia.Templates
     dotnet new install "Microsoft.AspNetCore.Blazor.Templates::3.0.0-*"
@@ -952,11 +953,11 @@ MONITORS
         fi
         
         # Update editor
-        if grep -q '^\$editor' "$hypr_vars"; then
-            sed -i 's|^\$editor.*|$editor = code|' "$hypr_vars"
-        else
-            echo '$editor = code' >> "$hypr_vars"
-        fi
+        #if grep -q '^\$editor' "$hypr_vars"; then
+        #    sed -i 's|^\$editor.*|$editor = code|' "$hypr_vars"
+        #else
+        #    echo '$editor = code' >> "$hypr_vars"
+        #fi
         
         # Update fileExplorer
         #if grep -q '^\$fileExplorer' "$hypr_vars"; then
