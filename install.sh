@@ -1755,6 +1755,8 @@ help | --help | -h)
 esac
 SETUP_SCRIPT
 
+    chmod +x $HOME/.config/fastfetch/fastfetch.sh
+
 }
 
 # ===== MAIN =====
