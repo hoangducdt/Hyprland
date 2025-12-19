@@ -800,10 +800,10 @@ mkdir -p "$HOME/.config/xfce4"
     #install_aur_package "nautilus-open-any-terminal" 900
     #gsettings set com.github.stunkymonkey.nautilus-open-any-terminal terminal kitty
     
-    curl -L -o "$HOME/.face" https://raw.githubusercontent.com/hoangducdt/caelestia/main/.face.png
-    curl -L -o "$HOME/.config/fastfetch/logo/aisaka.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/aisaka.icon
-    curl -L -o "$HOME/.config/fastfetch/logo/hyprland.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/hyprland.icon
-    curl -L -o "$HOME/.config/fastfetch/logo/loli.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/loli.icon
+    curl -L -o "$HOME/.face" https://raw.githubusercontent.com/hoangducdt/caelestia/main/imgs/.face.png
+    curl -L -o "$HOME/.config/fastfetch/logo/aisaka.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/imgs/aisaka.icon
+    curl -L -o "$HOME/.config/fastfetch/logo/hyprland.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/imgs/hyprland.icon
+    curl -L -o "$HOME/.config/fastfetch/logo/loli.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/imgs/loli.icon
     
     chmod 644 ~/.face
     

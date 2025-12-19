@@ -96,6 +96,31 @@ except:
 " 2>/dev/null || echo "no"
 }
 
+function confirm-overwrite -a path
+    if test -e $path -o -L $path
+        # No prompt if noconfirm
+        if set -q noconfirm
+            input "$path already exists. Overwrite? [Y/n]"
+            log 'Removing...'
+            rm -rf $path
+        else
+            # Prompt user
+            input "$path already exists. Overwrite? [Y/n] " -n
+            set -l confirm (sh-read)
+
+            if test "$confirm" = 'n' -o "$confirm" = 'N'
+                log 'Skipping...'
+                return 1
+            else
+                log 'Removing...'
+                rm -rf $path
+            end
+        end
+    end
+
+    return 0
+end
+
 # ===== BANNER =====
 
 show_banner() {
@@ -146,6 +171,14 @@ creative_info() {
 }
 
 # ===== PACKAGE MANAGEMENT =====
+
+install_aur_helper(){
+    if ! command -v yay &>/dev/null; then
+        if ! pacman -Q yay &> /dev/null
+            sudo pacman -S --needed --noconfirm yay
+        end
+    fi
+}
 
 safe_remove_package() {
     local pkg="$1"
@@ -200,7 +233,8 @@ install_aur_package() {
     fi
     
     if ! command -v yay &>/dev/null; then
-        sudo pacman -S --needed --noconfirm yay
+        warn "yay not available, skipping $pkg"
+        return 1
     fi
     
     log "Installing AUR: $pkg (timeout: ${timeout_seconds}s)"
@@ -962,10 +996,10 @@ setup_directories() {
             "$HOME/Pictures/Wallpapers" 2>&1 | tee -a "$LOG" || warn "Wallpapers clone failed"
     fi
     
-    curl -L -o "$HOME/.face" https://raw.githubusercontent.com/hoangducdt/caelestia/main/.face.png
-    curl -L -o "$HOME/.config/fastfetch/logo/aisaka.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/aisaka.icon
-    curl -L -o "$HOME/.config/fastfetch/logo/hyprland.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/hyprland.icon
-    curl -L -o "$HOME/.config/fastfetch/logo/loli.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/loli.icon
+    curl -L -o "$HOME/.face" https://raw.githubusercontent.com/hoangducdt/caelestia/imgs/main/.face.png
+    curl -L -o "$HOME/.config/fastfetch/logo/aisaka.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/imgs/aisaka.icon
+    curl -L -o "$HOME/.config/fastfetch/logo/hyprland.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/imgs/hyprland.icon
+    curl -L -o "$HOME/.config/fastfetch/logo/loli.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/imgs/loli.icon
     
     chmod 644 ~/.face
     
@@ -1968,6 +2002,7 @@ KITTY_THEMES
 main() {
     show_banner
     init_state
+    install_aur_helper()
     # Execute all setup functions
     setup_nvidia_cleanup
     setup_system_update
