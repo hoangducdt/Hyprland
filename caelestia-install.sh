@@ -1013,7 +1013,7 @@ mkdir -p "$HOME/.config/gtk-3.0"
     chmod 644 ~/.face
     
     # Thêm bookmarks
-    cat >> ~/.config/gtk-3.0/bookmarks <<EOF
+    cat >> $HOME/.config/gtk-3.0/bookmarks <<EOF
 file://$HOME/Downloads
 file://$HOME/Documents
 file://$HOME/Pictures
