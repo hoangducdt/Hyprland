@@ -361,8 +361,8 @@ setup_nvidia_drivers() {
     # Install NVIDIA drivers (proprietary for best RTX 3060 performance)
     sudo pacman -S --needed --noconfirm \
         nvidia-dkms \
+lib32-nvidia-utils \
         nvidia-utils \
-        lib32-nvidia-utils \
         nvidia-settings \
         opencl-nvidia \
         lib32-opencl-nvidia \
