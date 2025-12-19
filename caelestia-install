@@ -1,0 +1,1999 @@
+#!/bin/bash
+
+# ================================================================================================
+# CAELESTIA INSTALLER - OPTIMIZED FOR CACHYOS
+# ================================================================================================
+# Target System: CachyOS + Hyprland + Caelestia dots file
+# Hardware: ROG STRIX B550-XE | Ryzen 7 5800X | RTX 3060 12GB
+# Optimizations: Conflict resolution, CachyOS-specific packages, performance tuning
+# ================================================================================================
+
+set -e
+
+# Colors
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly MAGENTA='\033[0;35m'
+readonly CYAN='\033[0;36m'
+readonly NC='\033[0m'
+
+readonly LOG="$HOME/setup_complete_$(date +%Y%m%d_%H%M%S).log"
+readonly STATE_DIR="$HOME/.cache/caelestia-setup"
+readonly STATE_FILE="$STATE_DIR/setup_state.json"
+readonly BACKUP_DIR="$HOME/Documents/caelestia-configs-$(date +%Y%m%d_%H%M%S)"
+
+LOG_FILE="$HOME/caelestia_install_$(date +%Y%m%d_%H%M%S).log"
+
+log() { echo -e "${GREEN}▶${NC} $1" | tee -a "$LOG_FILE"; }
+error() { echo -e "${RED}✗${NC} $1" | tee -a "$LOG_FILE"; exit 1; }
+warning() { echo -e "${YELLOW}⚠${NC} $1" | tee -a "$LOG_FILE"; }
+ai_info() { echo -e "${MAGENTA}[AI/ML]${NC} $1" | tee -a "$LOG_FILE"; }
+creative_info() { echo -e "${CYAN}[CREATIVE]${NC} $1" | tee -a "$LOG_FILE"; }
+
+if ! sudo -v; then
+    error "Không có quyền sudo. Thoát."
+fi
+
+# Keep sudo alive - tự động refresh mỗi 60s
+(
+    while true; do
+        sudo -n true
+        sleep 60
+        kill -0 "$$" || exit
+    done 2>/dev/null
+) &
+SUDO_REFRESH_PID=$!
+
+trap "kill $SUDO_REFRESH_PID 2>/dev/null" EXIT
+
+# Create directories
+mkdir -p "$STATE_DIR" "$BACKUP_DIR"
+
+# ===== STATE MANAGEMENT =====
+
+init_state() {
+    if [ ! -f "$STATE_FILE" ]; then
+        cat > "$STATE_FILE" <<EOF
+{
+  "version": "1.0",
+  "start_time": "$(date -Iseconds)",
+  "completed": [],
+  "failed": [],
+  "warnings": []
+}
+EOF
+    fi
+}
+
+mark_completed() {
+    local step="$1"
+    python3 -c "
+import json
+try:
+    with open('$STATE_FILE', 'r') as f:
+        state = json.load(f)
+    if '$step' not in state['completed']:
+        state['completed'].append('$step')
+    with open('$STATE_FILE', 'w') as f:
+        json.dump(state, f, indent=2)
+except Exception as e:
+    print(f'Warning: Could not update state: {e}')
+" 2>/dev/null || true
+}
+
+is_completed() {
+    local step="$1"
+    python3 -c "
+import json
+try:
+    with open('$STATE_FILE', 'r') as f:
+        state = json.load(f)
+    print('yes' if '$step' in state['completed'] else 'no')
+except:
+    print('no')
+" 2>/dev/null || echo "no"
+}
+
+# ===== BANNER =====
+
+show_banner() {
+    clear
+    echo -e "${GREEN}"
+    cat << "EOF"
+╭────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ▀████    ███                                                 ▀█████████▄             █         │
+│   ███    ███                 ▀▀▀▀                              ███    ███          █           │
+│   ███    ███    ▄██████▄  ▀███████▄  ▀████████▄   ▄██████▄     ███    ███ ███   ███▀ ▄██████▄  │
+│  ▄███▄▄▄▄███▄▄ ███    ███       ▀███  ███    ███ ███    ███   ▄███▄▄▄ ███ ███   ███ ███    ███ │
+│ ▀▀███▀▀▀▀███▀  ███    ███  ▄████████  ███    ███ ███    ███  ▀▀███▀▀▀ ███ ███   ███ ███        │
+│   ███    ███   ███    ███ ███    ███  ███    ███ ███    ███    ███    ███ ███   ███ ███        │
+│   ███    ███   ███    ███ ███    ███  ███    ███ ███    ███    ███    ███ ███   ███ ███    ███ │
+│   ███    ███    ▀██████▀   ▀████████▄ ███    ███  ▀████████  ▄█████████▀   ▀█████▀   ▀██████▀  │
+│                                                        ▄███                                    │
+│                                                 ▄████████▀                                     │
+│   COMPLETE INSTALLER - Safe Gaming Optimizations                                               │
+│                        ROG STRIX B550-XE │ Ryzen 7 5800X │ RTX 3060 12GB                       │
+╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+EOF
+    echo -e "${NC}"
+}
+
+
+# ===== LOGGING =====
+
+log() { 
+    echo -e "${GREEN}[$(date +'%H:%M:%S')]${NC} $1" | tee -a "$LOG"
+}
+
+warn() { 
+    echo -e "${YELLOW}⚠ [$(date +'%H:%M:%S')]${NC} $1" | tee -a "$LOG"
+}
+
+error() {
+    echo -e "${RED}✗ [$(date +'%H:%M:%S')]${NC} $1" | tee -a "$LOG"
+    echo -e "${YELLOW}See log: $LOG${NC}"
+    exit 1
+}
+
+ai_info() { 
+    echo -e "${MAGENTA}[AI/ML]${NC} $1" | tee -a "$LOG"
+}
+
+creative_info() { 
+    echo -e "${CYAN}[CREATIVE]${NC} $1" | tee -a "$LOG"
+}
+
+# ===== PACKAGE MANAGEMENT =====
+
+safe_remove_package() {
+    local pkg="$1"
+    
+    if ! pacman -Qi "$pkg" &>/dev/null; then
+        return 0
+    fi
+    
+    log "Removing conflicting package: $pkg"
+    
+    # Check dependencies
+    local deps=$(pactree -r "$pkg" 2>/dev/null | tail -n +2 | wc -l)
+    if [ "$deps" -gt 0 ]; then
+        warn "$pkg has $deps dependent packages"
+    fi
+    
+    sudo pacman -Rdd --noconfirm "$pkg" 2>&1 | tee -a "$LOG" || warn "Failed to remove $pkg"
+}
+
+install_package() {
+    local pkg="$1"
+    local max_retries=3
+    local retry=0
+    
+    # Skip if installed
+    if pacman -Qi "$pkg" &>/dev/null; then
+        return 0
+    fi
+    
+    while [ $retry -lt $max_retries ]; do
+        if sudo pacman -S --needed --noconfirm "$pkg" 2>&1 | tee -a "$LOG"; then
+            return 0
+        fi
+        
+        retry=$((retry + 1))
+        if [ $retry -lt $max_retries ]; then
+            warn "Retry installing $pkg ($retry/$max_retries)..."
+            sleep 2
+        fi
+    done
+    
+    warn "Failed to install $pkg"
+    return 1
+}
+
+install_aur_package() {
+    local pkg="$1"
+    local timeout_seconds="${2:-600}"
+    
+    if pacman -Qi "$pkg" &>/dev/null; then
+        return 0
+    fi
+    
+    if ! command -v yay &>/dev/null; then
+        sudo pacman -S --needed --noconfirm yay
+    fi
+    
+    log "Installing AUR: $pkg (timeout: ${timeout_seconds}s)"
+    
+    if timeout "$timeout_seconds" yay -S --noconfirm --needed "$pkg" 2>&1 | tee -a "$LOG"; then
+        return 0
+    else
+        warn "Failed to install AUR package: $pkg"
+        return 1
+    fi
+}
+
+install_packages() {
+    local packages=("$@")
+    local failed=()
+    
+    for pkg in "${packages[@]}"; do
+        # Skip if already installed
+        if pacman -Qi "$pkg" &>/dev/null; then
+            continue
+        fi
+        
+        # Check if package exists in official repos
+        if pacman -Si "$pkg" &>/dev/null 2>&1; then
+            # Package found in official repos, install with pacman
+            if ! install_package "$pkg"; then
+                failed+=("$pkg")
+            fi
+        else
+            # Package not in official repos, try AUR with yay
+            log "Package '$pkg' not found in official repos, trying AUR..."
+            if ! install_aur_package "$pkg"; then
+                failed+=("$pkg")
+            fi
+        fi
+    done
+    
+    if [ ${#failed[@]} -gt 0 ]; then
+        warn "Failed packages: ${failed[*]}"
+    fi
+}
+
+# ===== BACKUP =====
+
+backup_file() {
+    local file="$1"
+    local backup_path="$BACKUP_DIR/$(basename "$file").backup"
+    
+    if [ -f "$file" ]; then
+        cp "$file" "$backup_path" 2>/dev/null || warn "Failed to backup $file"
+        log "Backed up: $file"
+    fi
+}
+
+backup_dir() {
+    local dir="$1"
+    local backup_path="$BACKUP_DIR/$(basename "$dir")"
+    
+    if [ -d "$dir" ]; then
+        cp -r "$dir" "$backup_path" 2>/dev/null || warn "Failed to backup $dir"
+        log "Backed up: $dir"
+    fi
+}
+
+# ===== SETUP FUNCTIONS =====
+
+setup_nvidia_cleanup() {
+    if [ "$(is_completed 'nvidia_cleanup')" = "yes" ]; then
+        log "✓ NVIDIA cleanup already done"
+        return 0
+    fi
+    
+    log "Cleaning up NVIDIA conflicts (CachyOS optimized)..."
+    
+    # CachyOS-specific conflicts
+    local conflict_pkgs=(
+        "linux-cachyos-nvidia-open"         # CachyOS open driver (conflicts with proprietary)
+        "nvidia-open"                        # Open source variant
+        "lib32-nvidia-open"                  # 32-bit open source
+        "nvidia-open-dkms"                   # DKMS variant
+        "media-dkms"                         # Old media driver
+        "linux-cachyos-lts-nvidia-open"     # LTS kernel open driver
+        "egl-wayland-git"                    # Git version (use stable)
+    )
+    
+    for pkg in "${conflict_pkgs[@]}"; do
+        safe_remove_package "$pkg"
+    done
+    
+    sudo pacman -Sc --noconfirm 2>/dev/null || true
+    
+    mark_completed "nvidia_cleanup"
+    log "✓ NVIDIA cleanup done"
+}
+
+setup_system_update() {
+    if [ "$(is_completed 'system_update')" = "yes" ]; then
+        log "✓ System already updated"
+        return 0
+    fi
+    
+    log "Updating system..."
+    
+    # Update keyrings first
+    sudo pacman -Sy --noconfirm archlinux-keyring cachyos-keyring 2>&1 | tee -a "$LOG" || true
+    
+    # Full update with retry
+    local max_retries=3
+    local retry=0
+    
+    while [ $retry -lt $max_retries ]; do
+        if sudo pacman -Syu --noconfirm 2>&1 | tee -a "$LOG"; then
+            mark_completed "system_update"
+            log "✓ System updated"
+            return 0
+        fi
+        
+        retry=$((retry + 1))
+        warn "System update retry $retry/$max_retries"
+        sudo pacman -Syy 2>&1 | tee -a "$LOG"
+        sleep 3
+    done
+    
+    warn "System update had issues but continuing..."
+    mark_completed "system_update"
+}
+
+setup_nvidia_drivers() {
+    if [ "$(is_completed 'nvidia_drivers')" = "yes" ]; then
+        log "✓ NVIDIA drivers already installed"
+        return 0
+    fi
+    
+    log "Installing NVIDIA proprietary drivers (RTX 3060 optimized)..."
+    
+    # Backup configs
+    backup_file "/etc/mkinitcpio.conf"
+    backup_file "/etc/modprobe.d/nvidia.conf"
+    
+    # Install NVIDIA drivers (proprietary for best RTX 3060 performance)
+    sudo pacman -S --needed --noconfirm \
+        nvidia-dkms \
+        nvidia-utils \
+        lib32-nvidia-utils \
+        nvidia-settings \
+        opencl-nvidia \
+        lib32-opencl-nvidia \
+        libva-nvidia-driver \
+        egl-wayland \
+        libvdpau \
+        lib32-libvdpau
+    
+    # Configure mkinitcpio for early KMS
+    if [ -f /etc/mkinitcpio.conf ]; then
+        sudo sed -i 's/^MODULES=.*/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
+        
+        # Add missing hooks if needed
+        if ! grep -q "^HOOKS=.*kms" /etc/mkinitcpio.conf; then
+            sudo sed -i 's/^HOOKS=\(.*\)filesystems/HOOKS=\1kms filesystems/' /etc/mkinitcpio.conf
+        fi
+    fi
+    
+    # NVIDIA modprobe options (RTX 3060 optimized)
+    sudo tee /etc/modprobe.d/nvidia.conf > /dev/null <<EOF
+# NVIDIA RTX 3060 12GB Optimization
+options nvidia_drm modeset=1 fbdev=1
+options nvidia NVreg_PreserveVideoMemoryAllocations=1
+options nvidia NVreg_UsePageAttributeTable=1
+options nvidia NVreg_InitializeSystemMemoryAllocations=0
+
+# Power management
+options nvidia NVreg_DynamicPowerManagement=0x02
+
+# Performance
+options nvidia NVreg_EnableGpuFirmware=0
+options nvidia NVreg_RegistryDwords="PowerMizerEnable=0x1;PerfLevelSrc=0x2222;PowerMizerLevel=0x3;PowerMizerDefault=0x3;PowerMizerDefaultAC=0x3"
+EOF
+
+    # Rebuild initramfs
+    sudo mkinitcpio -P
+    
+    # Enable NVIDIA services
+    sudo systemctl enable nvidia-suspend.service
+    sudo systemctl enable nvidia-hibernate.service
+    sudo systemctl enable nvidia-resume.service
+    
+    mark_completed "nvidia_drivers"
+    log "✓ NVIDIA drivers installed"
+}
+
+setup_base_packages() {
+    if [ "$(is_completed 'base_packages')" = "yes" ]; then
+        log "✓ Base packages already installed"
+        return 0
+    fi
+    
+    log "Installing base packages (CachyOS optimized)..."
+	
+    # CachyOS optimized packages (prefer cachyos- prefixed packages)
+    local base_pkgs=(
+		#####
+		"caelestia-cli"
+		"caelestia-shell"
+		"hyprland"
+		"xdg-desktop-portal-gtk"
+		"hyprpicker"
+		"cliphist"
+		"inotify-tools"
+		"app2unit"
+		"trash-cli"
+		"eza"
+		"jq"
+		"adw-gtk-theme"
+        "papirus-icon-theme"
+		"qt5ct-kde"
+		"qt6ct-kde"
+		"todoist-appimage"
+		"uwsm"
+		"direnv"
+		
+	
+        # System essentials
+        "base-devel"
+        "git"
+        "wget"
+        "curl"
+		"fish"
+		"kitty"
+        
+		"wl-clipboard"
+		"xdg-desktop-portal-hyprland"
+		
+		"qt5-wayland"
+		"qt6-wayland"
+		
+		"gnome-keyring"
+		"polkit-gnome"
+		
+		"tumbler"
+		"ffmpegthumbnailer"
+		"libgsf"
+		"thunar"
+		
+        # File systems (with CachyOS optimizations where available)
+        "btrfs-progs"
+        "exfatprogs"
+        "ntfs-3g"
+        "dosfstools"
+        
+        # Compression
+        "zip"
+        "unzip"
+        "p7zip"
+        "unrar"
+		"rsync"
+		"tmux"
+        "starship"
+		"eza"
+		"bat"
+		"ripgrep"
+		"fd"
+		"fzf"
+		"zoxide"
+        "nvtop"
+		"amdgpu_top"
+		"iotop"
+		"iftop"
+		
+        # System tools
+        "htop"
+        "btop" # NVIDIA GPU monitor
+        "neofetch"
+        "fastfetch"
+		
+		# Disk management
+        "gparted"
+        "gnome-disk-utility"
+		
+		# PDF viewer
+        "zathura"
+        "zathura-pdf-poppler"
+        
+        # Network
+        "networkmanager"
+        "network-manager-applet"
+        "nm-connection-editor"
+        
+        # Python (essential for many tools)
+        "python"
+        "python-pip"
+        "python-virtualenv"
+		"python-numpy"
+		"python-pandas"
+		"jupyter-notebook"
+        "python-scikit-learn"
+		"python-matplotlib"
+		"python-pillow"
+		"python-scipy"
+		
+		"cuda"
+		"cudnn"
+		"python-pytorch-cuda"
+		
+		# Audio
+        "pipewire"
+        "pipewire-pulse"
+        "pipewire-alsa"
+        "pipewire-jack"
+        "wireplumber"
+        "pavucontrol"               # GUI volume control
+        "helvum"                    # Pipewire patchbay
+		"v4l2loopback-dkms"
+		"gstreamer-vaapi"
+		"noise-suppression-for-voice"
+        
+        # Video players
+        "mpv"
+        "vlc"
+        
+        # Image viewers/editors
+        "imv"                       # Wayland image viewer
+        "gimp"
+        "inkscape"
+        
+        # Audio production
+        "audacity"
+        
+        # Video editing
+        "kdenlive"
+        "obs-studio"
+        
+        # Codecs
+        "gst-plugins-good"
+        "gst-plugins-bad"
+        "gst-plugins-ugly"
+        "gst-libav"
+        "ffmpeg"
+        
+        # Nvidia hardware acceleration
+        "libva-nvidia-driver"
+		
+		"gstreamer"
+		"gst-plugins-base"
+        "libvorbis"
+		"lib32-libvorbis"
+		"opus"
+		"lib32-opus"
+        "flac"
+		"lib32-flac"
+		"x264"
+		"x265"
+		
+		# Code editors
+        "neovim"
+        "codium" # VSCode
+        
+        # Version control
+        "git"
+        "github-cli"
+        
+        # Build tools (already in base-devel but ensure)
+        "cmake"
+        "ninja"
+        "meson"
+        
+        # Compilers
+        "gcc"
+        "clang"
+        
+        # Languages
+        "nodejs"
+        "npm"
+        "rust"
+        "go"
+        
+        # Containers
+        "docker"
+        "docker-compose"
+        
+        # Database
+        "postgresql"
+        "redis"
+        
+        # API testing
+        "postman-bin"
+		
+		"dotnet-sdk"
+		"dotnet-runtime"
+		"dotnet-sdk-9.0"
+		"dotnet-sdk-8.0"
+        "aspnet-runtime"
+		"mono"
+		"mono-msbuild"
+        "docker"
+		"docker-compose"
+		
+		# Gaming packages
+		"cachyos-gaming-meta" #depends=alsa-plugins/giflib/glfw/gst-plugins-base-libs/lib32-alsa-plugins/lib32-giflib/lib32-gst-plugins-base-libs/lib32-gtk3/lib32-libjpeg-turbo/lib32-libva/lib32-mpg123/lib32-ocl-icd/lib32-opencl-icd-loader/lib32-openal/libjpeg-turbo/libva/libxslt/mpg123/opencl-icd-loader/openal/proton-cachyos-slr/umu-launcher/protontricks/ttf-liberation/wine-cachyos-opt/winetricks/vulkan-tools
+		"cachyos-gaming-applications" #depends=gamescope/goverlay/heroic-games-launcher/lib32-mangohud/lutris/mangohud/steam/wqy-zenhei
+		"lib32-vulkan-icd-loader"
+        "lib32-nvidia-utils" 
+        "vulkan-icd-loader"
+        "gamemode"
+        "lib32-gamemode"
+        "xpadneo-dkms" # Xbox controller
+		
+		#AI/ML
+		"ollama-cuda"
+		
+		"blender" # 3D sculpting
+		"openimagedenoise"
+		"opencolorio"
+		"opensubdiv"
+        "openvdb"
+		"embree"
+		"openimageio"
+		"alembic"
+		"openjpeg2"
+        "openexr"
+		"libspnav"
+		
+		"gimp"
+		"gimp-plugin-gmic"
+        "krita" # Digital painting
+		"inkscape" # Vector graphics
+        "kdenlive" # Video
+		"frei0r-plugins"
+		"mediainfo"
+		"mlt"
+        "audacity" # Audio
+		"ardour" # DAW
+		"scribus"
+        "darktable" # Photo workflow
+		"rawtherapee"
+        "imagemagick"
+		"graphicsmagick"
+		"potrace"
+		"fontforge"
+		
+		"irqbalance"                # IRQ load balancing
+        "cpupower"                  # CPU frequency scaling
+        "thermald"                  # Thermal management
+        "tlp"                       # Power management
+        "powertop"                  # Power analysis
+        "preload"                   # Application preloader
+		
+		"wlr-randr"
+		"kanshi"
+		"nwg-displays"
+		
+		"lib32-ffmpeg"
+		"protonup-qt" #Proton-GE manager
+		"microsoft-edge-stable-bin"
+		"docker-desktop"
+		"rider"
+		"github-desktop"
+		"lmstudio"
+		"davinci-resolve"
+		"natron"
+		"obs-vaapi"
+		"obs-nvfbc"
+		"obs-vkcapture"
+		"obs-websocket"
+		"vesktop-bin"
+		"openrgb"
+		
+		#Vietnamese input
+		"fcitx5"
+		"fcitx5-qt"
+		"fcitx5-gtk"
+		"fcitx5-configtool"
+		"fcitx5-bamboo-git"
+		
+		"gdm"
+		
+		# Fonts
+		"ttf-jetbrains-mono-nerd"
+        "adobe-source-code-pro-fonts"
+        "ttf-liberation"
+        "ttf-dejavu"
+    )
+	
+    install_packages "${base_pkgs[@]}"
+	
+    # Enable NetworkManager
+    sudo systemctl enable NetworkManager
+    
+    mark_completed "base_packages"
+    log "✓ Base packages installed"
+}
+
+setup_hyprland_caelestia() {
+    if [ "$(is_completed 'hyprland')" = "yes" ]; then
+        log "✓ Hyprland already installed"
+        return 0
+    fi
+    
+    log "Installing Hyprland Caelestia..."
+    
+    local caelestia_dir="$HOME/.local/share/caelestia"
+    
+    # Backup existing
+    if [ -d "$caelestia_dir" ]; then
+        backup_dir "$caelestia_dir"
+        mv "$caelestia_dir" "${caelestia_dir}.backup.$(date +%s)" 2>/dev/null || true
+    fi
+    
+    # Clone repo
+    if git clone --quiet --depth 1 https://github.com/caelestia-dots/caelestia.git "$caelestia_dir" 2>&1 | tee -a "$LOG"; then
+        cd "$caelestia_dir"
+        
+        # Patch install script to avoid nvidia-open
+        if [ -f "install.fish" ]; then
+            cp install.fish install.fish.backup
+            sed -i '/nvidia-open/s/^/#/' install.fish 2>/dev/null || true
+        fi
+        
+        # Install fish if needed
+        command -v fish &>/dev/null || install_package "fish"
+        
+        # Run installer
+        fish ./install.fish --noconfirm --aur-helper=yay 2>&1 | tee -a "$LOG" || warn "Caelestia warnings"
+        
+        # Clean up nvidia-open again
+        setup_nvidia_cleanup
+    else
+        warn "Failed to clone Caelestia"
+    fi
+    
+    mark_completed "hyprland"
+    log "✓ Hyprland installed"
+}
+
+setup_gaming() {
+    if [ "$(is_completed 'gaming')" = "yes" ]; then
+        log "✓ Gaming setup already done"
+        return 0
+    fi
+    
+    log "Setting up gaming environment..."
+    
+    # Kích hoạt multilib (hỗ trợ 32-bit để chơi game)
+    if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+        log "Enabling multilib repository..."
+        sudo sed -i '/\[multilib\]/,/Include/ s/^#//' /etc/pacman.conf
+        sudo pacman -Sy
+    fi
+	# Configure gamemode
+    sudo usermod -aG gamemode "$USER"
+    
+    # MangoHud config for RTX 3060
+    mkdir -p "$HOME/.config/MangoHud"
+    cat > "$HOME/.config/MangoHud/MangoHud.conf" <<EOF
+# MangoHud Config for RTX 3060
+legacy_layout=false
+horizontal
+gpu_stats
+cpu_stats
+ram
+vram
+fps
+frametime=0
+frame_timing=1
+vulkan_driver
+wine
+engine_version
+gamemode
+no_display
+EOF
+    
+    mark_completed "gaming"
+    log "✓ Gaming setup completed"
+}
+
+setup_development() {
+    if [ "$(is_completed 'development')" = "yes" ]; then
+        log "✓ Development tools already installed"
+        return 0
+    fi
+    
+    log "Installing development tools..."
+    
+    # Docker setup
+    sudo systemctl enable --now docker.service 2>/dev/null || true
+    sudo usermod -aG docker "$USER" 2>/dev/null || true
+    
+    mark_completed "development"
+    log "✓ Development tools installed"
+    
+    # Enable Docker
+    sudo systemctl enable docker
+    sudo usermod -aG docker "$USER"
+    
+    mark_completed "development"
+    log "✓ Development tools installed"
+}
+
+setup_multimedia() {
+    if [ "$(is_completed 'multimedia')" = "yes" ]; then
+        log "✓ Multimedia already installed"
+        return 0
+    fi
+    
+    # Enable Pipewire
+    systemctl --user enable pipewire
+    systemctl --user enable pipewire-pulse
+    systemctl --user enable wireplumber
+    
+    mark_completed "multimedia"
+    log "✓ Multimedia installed"
+}
+
+setup_ai_ml() {
+    if [ "$(is_completed 'ai_ml')" = "yes" ]; then
+        log "✓ AI/ML already installed"
+        return 0
+    fi
+    
+    ai_info "Installing AI/ML stack (CUDA + PyTorch for RTX 3060)..."
+    
+    # Install PyTorch with CUDA support via pip
+    ai_info "Installing PyTorch with CUDA 12 support..."
+    pip install --user torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    
+    # Install additional ML tools
+    ai_info "Installing additional ML tools..."
+    pip install --user transformers accelerate diffusers invisible-watermark
+	
+	sudo systemctl enable --now ollama.service 2>/dev/null || true
+    
+    mark_completed "ai_ml"
+    ai_info "✓ AI/ML stack installed"
+}
+
+setup_streaming() {
+    if [ "$(is_completed 'streaming')" = "yes" ]; then
+        log "✓ Streaming tools already installed"
+        return 0
+    fi
+    
+    log "Installing streaming tools..."
+	
+    # Load v4l2loopback
+    sudo modprobe v4l2loopback 2>/dev/null || true
+    echo "v4l2loopback" | sudo tee /etc/modules-load.d/v4l2loopback.conf >/dev/null
+    
+    mark_completed "streaming"
+    log "✓ Streaming tools installed"
+}
+
+setup_system_optimization() {
+    if [ "$(is_completed 'system_optimization')" = "yes" ]; then
+        log "✓ System optimization already done"
+        return 0
+    fi
+    
+    log "Applying system optimizations (Ryzen 7 5800X)..."
+	
+    # CPU governor (performance for desktop)
+    sudo cpupower frequency-set -g performance
+    
+    # Create systemd service for CPU governor
+    sudo tee /etc/systemd/system/cpupower-performance.service > /dev/null <<EOF
+[Unit]
+Description=Set CPU governor to performance
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/cpupower frequency-set -g performance
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    sudo systemctl enable cpupower-performance.service
+    
+    # Enable services
+    sudo systemctl enable irqbalance
+    sudo systemctl enable thermald
+    
+    # TLP configuration (balanced)
+    if [ -f /etc/tlp.conf ]; then
+        backup_file "/etc/tlp.conf"
+        sudo sed -i 's/^#CPU_SCALING_GOVERNOR_ON_AC=.*/CPU_SCALING_GOVERNOR_ON_AC=performance/' /etc/tlp.conf
+        sudo sed -i 's/^#CPU_ENERGY_PERF_POLICY_ON_AC=.*/CPU_ENERGY_PERF_POLICY_ON_AC=performance/' /etc/tlp.conf
+        sudo systemctl enable tlp.service
+    fi
+    
+    # Kernel parameters for Ryzen 7 5800X (AMD Zen 3)
+    sudo tee /etc/sysctl.d/99-ryzen-optimization.conf > /dev/null <<EOF
+# Ryzen 7 5800X Optimizations
+vm.swappiness=10
+vm.vfs_cache_pressure=50
+vm.dirty_ratio=10
+vm.dirty_background_ratio=5
+
+# Network performance
+net.core.default_qdisc=cake
+net.ipv4.tcp_congestion_control=bbr
+
+# File system
+fs.inotify.max_user_watches=524288
+EOF
+    
+    sudo sysctl -p /etc/sysctl.d/99-ryzen-optimization.conf
+    
+    # I/O scheduler (BFQ for responsiveness)
+    echo 'ACTION=="add|change", KERNEL=="sd[a-z]*", ATTR{queue/scheduler}="bfq"' | \
+        sudo tee /etc/udev/rules.d/60-ioschedulers.rules
+    echo 'ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"' | \
+        sudo tee -a /etc/udev/rules.d/60-ioschedulers.rules
+    
+    mark_completed "system_optimization"
+    log "✓ System optimization completed"
+}
+
+setup_gdm() {
+    if [ "$(is_completed 'gdm')" = "yes" ]; then
+        log "✓ GDM already configured"
+        return 0
+    fi
+    
+    log "Configuring GDM..."
+    
+	# Enable Wayland for GDM
+    if [ -f /etc/gdm/custom.conf ]; then
+        backup_file "/etc/gdm/custom.conf"
+        sudo sed -i 's/^#WaylandEnable=false/WaylandEnable=true/' /etc/gdm/custom.conf
+    fi
+    
+    mark_completed "gdm"
+    log "✓ GDM configured"
+}
+
+setup_directories() {
+    if [ "$(is_completed 'directories')" = "yes" ]; then
+        log "✓ Directories already created"
+        return 0
+    fi
+    
+    log "Creating directories & downloading wallpapers..."
+    
+    mkdir -p "$HOME"/{Desktop,Documents,Downloads,Music,Videos}
+    mkdir -p "$HOME/Pictures/Wallpapers"
+    mkdir -p "$HOME"/{AI-Projects,AI-Models,Creative-Projects,Blender-Projects}
+    mkdir -p "$HOME/.local/bin"
+    mkdir -p "$HOME/.config/hypr/scripts"
+    mkdir -p "$HOME/.config/caelestia"
+    mkdir -p "$HOME/OneDrive"
+    mkdir -p "$HOME/.config/hypr/hyprland"
+    mkdir -p "$HOME/.config/fastfetch/logo"
+    mkdir -p "$HOME/.config/kitty"
+    mkdir -p "$HOME/.config/xfce4"
+    
+    # Wallpapers
+    if [ ! -d "$HOME/Pictures/Wallpapers/.git" ]; then
+        git clone --quiet --depth 1 https://github.com/mylinuxforwork/wallpaper.git \
+            "$HOME/Pictures/Wallpapers" 2>&1 | tee -a "$LOG" || warn "Wallpapers clone failed"
+    fi
+    
+    curl -L -o "$HOME/.face" https://raw.githubusercontent.com/hoangducdt/caelestia/main/.face.png
+    curl -L -o "$HOME/.config/fastfetch/logo/aisaka.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/aisaka.icon
+    curl -L -o "$HOME/.config/fastfetch/logo/hyprland.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/hyprland.icon
+    curl -L -o "$HOME/.config/fastfetch/logo/loli.icon" https://raw.githubusercontent.com/hoangducdt/caelestia/main/loli.icon
+    
+    chmod 644 ~/.face
+    
+    # Thêm bookmarks
+    cat >> ~/.config/gtk-3.0/bookmarks <<EOF
+file://$HOME/Downloads
+file://$HOME/Documents
+file://$HOME/Pictures
+file://$HOME/Videos
+file://$HOME/Music
+file://$HOME/OneDrive
+EOF
+
+    mark_completed "directories"
+    log "✓ Directories created"
+}
+
+setup_configs() {
+    # Monitor configuration
+    cat > "$HOME/.config/hypr/hyprland/monitors.conf" <<'MONITORS'
+monitor=DP-1,2560x1080@99.94,0x0,1.0
+monitor=DP-3,1920x1080@74.97,2560x0,1.0
+MONITORS
+    
+    local hypr_conf="$HOME/.config/hypr/hyprland.conf"
+    
+    if [ -f "$hypr_conf" ]; then
+        if ! grep -q 'source = $hl/monitors.conf' "$hypr_conf"; then
+            echo 'source = $hl/monitors.conf' >> "$hypr_conf"
+            log "Added monitors.conf source to hyprland.conf"
+        fi
+    else
+        warn "hyprland.conf not found at $hypr_conf"
+    fi
+
+    # Hypr variables configuration - modify existing values
+    local hypr_vars="$HOME/.config/hypr/variables.conf"
+    if [ -f "$hypr_vars" ]; then
+        log "Updating Hyprland variables..."
+        backup_file "$hypr_vars"
+
+        # Update terminal
+        if grep -q '^\$terminal' "$hypr_vars"; then
+            sed -i 's|^\$terminal.*|$terminal = kitty|' "$hypr_vars"
+        else
+            echo '$terminal = kitty' >> "$hypr_vars"
+        fi
+        
+        # Update browser
+        if grep -q '^\$browser' "$hypr_vars"; then
+            sed -i 's|^\$browser.*|$browser = microsoft-edge-stable-bin|' "$hypr_vars"
+        else
+            echo '$browser = microsoft-edge-stable-bin' >> "$hypr_vars"
+        fi
+        
+        log "✓ Updated Hyprland variables"
+    else
+        warn "Hyprland variables.conf not found at $hypr_vars"
+    fi
+
+    # DNS configuration - modify existing values in resolved.conf
+    local resolved_conf="/etc/systemd/resolved.conf"
+    if [ -f "$resolved_conf" ]; then
+        log "Updating DNS configuration..."
+        backup_file "$resolved_conf"
+        
+        # Update or add DNS
+        if sudo grep -q '^DNS=' "$resolved_conf"; then
+            sudo sed -i 's|^DNS=.*|DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 2606:4700:4700::1001#cloudflare-dns.com|' "$resolved_conf"
+        elif sudo grep -q '^#DNS=' "$resolved_conf"; then
+            sudo sed -i 's|^#DNS=.*|DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 2606:4700:4700::1001#cloudflare-dns.com|' "$resolved_conf"
+        else
+            echo "DNS=1.1.1.1#cloudflare-dns.com 1.0.0.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 2606:4700:4700::1001#cloudflare-dns.com" | sudo tee -a "$resolved_conf" >/dev/null
+        fi
+        
+        # Update or add FallbackDNS
+        if sudo grep -q '^FallbackDNS=' "$resolved_conf"; then
+            sudo sed -i 's|^FallbackDNS=.*|FallbackDNS=9.9.9.9#dns.quad9.net 2620:fe::9#dns.quad9.net 1.1.1.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 8.8.8.8#dns.google 2001:4860:4860::8888#dns.google|' "$resolved_conf"
+        elif sudo grep -q '^#FallbackDNS=' "$resolved_conf"; then
+            sudo sed -i 's|^#FallbackDNS=.*|FallbackDNS=9.9.9.9#dns.quad9.net 2620:fe::9#dns.quad9.net 1.1.1.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 8.8.8.8#dns.google 2001:4860:4860::8888#dns.google|' "$resolved_conf"
+        else
+            echo "FallbackDNS=9.9.9.9#dns.quad9.net 2620:fe::9#dns.quad9.net 1.1.1.1#cloudflare-dns.com 2606:4700:4700::1111#cloudflare-dns.com 8.8.8.8#dns.google 2001:4860:4860::8888#dns.google" | sudo tee -a "$resolved_conf" >/dev/null
+        fi
+        
+        # Update or add DNSOverTLS
+        if sudo grep -q '^DNSOverTLS=' "$resolved_conf"; then
+            sudo sed -i 's|^DNSOverTLS=.*|DNSOverTLS=yes|' "$resolved_conf"
+        elif sudo grep -q '^#DNSOverTLS=' "$resolved_conf"; then
+            sudo sed -i 's|^#DNSOverTLS=.*|DNSOverTLS=yes|' "$resolved_conf"
+        else
+            echo "DNSOverTLS=yes" | sudo tee -a "$resolved_conf" >/dev/null
+        fi
+        
+        log "✓ Updated DNS configuration"
+    else
+        warn "systemd resolved.conf not found at $resolved_conf"
+    fi
+
+    # Restart systemd-resolved to apply DNS changes
+    sudo systemctl restart systemd-resolved.service 2>/dev/null || warn "Failed to restart systemd-resolved"
+
+    # Static IP configuration
+    log "Configuring static IP address..."
+    
+    # Get the primary network interface
+    local primary_interface=$(ip route | grep default | awk '{print $5}' | head -n1)
+    
+    if [ -n "$primary_interface" ]; then
+        log "Detected primary interface: $primary_interface"
+        
+        # Create NetworkManager connection profile for static IP
+        sudo tee /etc/NetworkManager/system-connections/static-ethernet.nmconnection > /dev/null <<STATIC_IP
+[connection]
+id=static-ethernet
+type=ethernet
+interface-name=$primary_interface
+autoconnect=true
+
+[ipv4]
+method=manual
+address1=192.168.1.2/24,192.168.1.1
+dns=1.1.1.1;1.0.0.1;
+dns-search=
+
+[ipv6]
+method=auto
+
+[proxy]
+STATIC_IP
+        
+        # Set correct permissions
+        sudo chmod 600 /etc/NetworkManager/system-connections/static-ethernet.nmconnection
+        
+        # Reload NetworkManager
+        sudo systemctl reload NetworkManager 2>/dev/null || warn "Failed to reload NetworkManager"
+        
+        log "✓ Static IP configured: 192.168.1.2/24 with gateway 192.168.1.1"
+    else
+        warn "Could not detect primary network interface for static IP configuration"
+    fi
+
+    # Add environment variables
+    cat >> "$HOME/.config/hypr/hyprland/env.conf" <<'NVIDIA_ENV'
+
+# NVIDIA Environment Variables
+env = LIBVA_DRIVER_NAME,nvidia
+env = XDG_SESSION_TYPE,wayland
+env = GBM_BACKEND,nvidia-drm
+env = __GLX_VENDOR_LIBRARY_NAME,nvidia
+env = WLR_NO_HARDWARE_CURSORS,1
+NVIDIA_ENV
+    
+    cat >> "$HOME/.config/hypr/hyprland/env.conf" <<'FCITX_ENV'
+
+# Vietnamese Input - Fcitx5
+env = XMODIFIERS,@im=fcitx
+env = SDL_IM_MODULE,fcitx
+env = GLFW_IM_MODULE,fcitx
+FCITX_ENV
+
+    cat >> "$HOME/.config/xfce4/helpers.rc" <<'FXCE4'
+TerminalEmulator=kitty
+TerminalEmulatorDismissed=true
+FXCE4
+    
+    # Add autostart
+    if [ -f "$HOME/.config/hypr/hyprland/execs.conf" ]; then
+        grep -q "fcitx5" "$HOME/.config/hypr/hyprland/execs.conf" || \
+            echo "exec-once = sleep 2; fcitx5" >> "$HOME/.config/hypr/hyprland/execs.conf"
+        grep -q "steam" "$HOME/.config/hypr/hyprland/execs.conf" || \
+            echo "exec-once = sleep 3; steam" >> "$HOME/.config/hypr/hyprland/execs.conf"
+        grep -q "vesktop" "$HOME/.config/hypr/hyprland/execs.conf" || \
+            echo "exec-once = sleep 4; vesktop" >> "$HOME/.config/hypr/hyprland/execs.conf"
+    fi
+    
+    # Configure VRR
+    if [ -f "$HOME/.config/hypr/hyprland/misc.conf" ]; then
+        sed -i 's/vrr = [0-9]/vrr = 0/' "$HOME/.config/hypr/hyprland/misc.conf"
+    else
+        cat > "$HOME/.config/hypr/hyprland/misc.conf" <<'MISC'
+misc {
+    vrr = 0
+    disable_hyprland_logo = true
+    disable_splash_rendering = true
+}
+MISC
+    fi
+    
+    # shell.json
+    cat > "$HOME/.config/caelestia/shell.json" <<'SHELL_JSON'
+{
+    "appearance": {
+        "anim": {
+            "durations": {
+                "scale": 1
+            }
+        },
+        "font": {
+            "family": {
+                "clock": "Rubik",
+                "material": "Material Symbols Rounded",
+                "mono": "CaskaydiaCove NF",
+                "sans": "Rubik"
+            },
+            "size": {
+                "scale": 1
+            }
+        },
+        "padding": {
+            "scale": 1
+        },
+        "rounding": {
+            "scale": 2
+        },
+        "spacing": {
+            "scale": 1
+        },
+        "transparency": {
+            "enabled": true,
+            "base": 0.5,
+            "layers": 0.4
+        }
+    },
+    "general": {
+        "apps": {
+            "terminal": ["kitty"],
+            "audio": ["pavucontrol"],
+            "playback": ["mpv"],
+            "explorer": ["thunar"]
+        },
+        "battery": {
+            "warnLevels": [
+                {
+                    "level": 20,
+                    "title": "Low battery",
+                    "message": "You might want to plug in a charger",
+                    "icon": "battery_android_frame_2"
+                },
+                {
+                    "level": 10,
+                    "title": "Did you see the previous message?",
+                    "message": "You should probably plug in a charger <b>now</b>",
+                    "icon": "battery_android_frame_1"
+                },
+                {
+                    "level": 5,
+                    "title": "Critical battery level",
+                    "message": "PLUG THE CHARGER RIGHT NOW!!",
+                    "icon": "battery_android_alert",
+                    "critical": true
+                }
+            ],
+            "criticalLevel": 3
+        },
+        "idle": {
+            "lockBeforeSleep": true,
+            "inhibitWhenAudio": true,
+            "timeouts": [
+                {
+                    "timeout": 180,
+                    "idleAction": "lock"
+                },
+                {
+                    "timeout": 300,
+                    "idleAction": "dpms off",
+                    "returnAction": "dpms on"
+                },
+                {
+                    "timeout": 600,
+                    "idleAction": ["systemctl", "suspend-then-hibernate"]
+                }
+            ]
+        }
+    },
+    "background": {
+        "desktopClock": {
+            "enabled": true
+        },
+        "enabled": true,
+        "visualiser": {
+            "blur": true,
+            "enabled": true,
+            "autoHide": true,
+            "rounding": 1,
+            "spacing": 1
+        }
+    },
+    "bar": {
+        "clock": {
+            "showIcon": true
+        },
+        "dragThreshold": 20,
+        "entries": [
+            {
+                "id": "logo",
+                "enabled": true
+            },
+            {
+                "id": "workspaces",
+                "enabled": true
+            },
+            {
+                "id": "spacer",
+                "enabled": true
+            },
+            {
+                "id": "activeWindow",
+                "enabled": true
+            },
+            {
+                "id": "spacer",
+                "enabled": true
+            },
+            {
+                "id": "tray",
+                "enabled": true
+            },
+            {
+                "id": "clock",
+                "enabled": true
+            },
+            {
+                "id": "statusIcons",
+                "enabled": true
+            },
+            {
+                "id": "power",
+                "enabled": true
+            }
+        ],
+        "persistent": true,
+        "popouts": {
+            "activeWindow": true,
+            "statusIcons": true,
+            "tray": true
+        },
+        "scrollActions": {
+            "brightness": true,
+            "workspaces": true,
+            "volume": true
+        },
+        "showOnHover": true,
+        "status": {
+            "showAudio": true,
+            "showBattery": false,
+            "showBluetooth": true,
+            "showKbLayout": false,
+            "showMicrophone": true,
+            "showNetwork": true,
+            "showLockStatus": true
+        },
+        "tray": {
+            "background": false,
+            "compact": false,
+            "iconSubs": [],
+            "recolour": false
+        },
+        "workspaces": {
+            "activeIndicator": true,
+            "activeLabel": "⬤",
+            "activeTrail": false,
+            "label": "󰄰 ",
+            "occupiedBg": false,
+            "occupiedLabel": "⬤",
+            "perMonitorWorkspaces": true,
+            "showWindows": true,
+            "shown": 5,
+            "specialWorkspaceIcons": [
+                {
+                    "name": "steam",
+                    "icon": "sports_esports"
+                }
+            ]
+        },
+        "excludedScreens": [""],
+        "activeWindow": {
+            "inverted": false
+        }
+    },
+    "border": {
+        "rounding": 25,
+        "thickness": 2.5
+    },
+    "dashboard": {
+        "enabled": true,
+        "dragThreshold": 50,
+        "mediaUpdateInterval": 500,
+        "showOnHover": true
+    },
+    "launcher": {
+        "actionPrefix": ">",
+        "actions": [
+            {
+                "name": "Calculator",
+                "icon": "calculate",
+                "description": "Do simple math equations (powered by Qalc)",
+                "command": ["autocomplete", "calc"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Scheme",
+                "icon": "palette",
+                "description": "Change the current colour scheme",
+                "command": ["autocomplete", "scheme"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Wallpaper",
+                "icon": "image",
+                "description": "Change the current wallpaper",
+                "command": ["autocomplete", "wallpaper"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Variant",
+                "icon": "colors",
+                "description": "Change the current scheme variant",
+                "command": ["autocomplete", "variant"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Transparency",
+                "icon": "opacity",
+                "description": "Change shell transparency",
+                "command": ["autocomplete", "transparency"],
+                "enabled": false,
+                "dangerous": false
+            },
+            {
+                "name": "Random",
+                "icon": "casino",
+                "description": "Switch to a random wallpaper",
+                "command": ["caelestia", "wallpaper", "-r"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Light",
+                "icon": "light_mode",
+                "description": "Change the scheme to light mode",
+                "command": ["setMode", "light"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Dark",
+                "icon": "dark_mode",
+                "description": "Change the scheme to dark mode",
+                "command": ["setMode", "dark"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Shutdown",
+                "icon": "power_settings_new",
+                "description": "Shutdown the system",
+                "command": ["systemctl", "poweroff"],
+                "enabled": true,
+                "dangerous": true
+            },
+            {
+                "name": "Reboot",
+                "icon": "cached",
+                "description": "Reboot the system",
+                "command": ["systemctl", "reboot"],
+                "enabled": true,
+                "dangerous": true
+            },
+            {
+                "name": "Logout",
+                "icon": "exit_to_app",
+                "description": "Log out of the current session",
+                "command": ["loginctl", "terminate-user", ""],
+                "enabled": true,
+                "dangerous": true
+            },
+            {
+                "name": "Lock",
+                "icon": "lock",
+                "description": "Lock the current session",
+                "command": ["loginctl", "lock-session"],
+                "enabled": true,
+                "dangerous": false
+            },
+            {
+                "name": "Sleep",
+                "icon": "bedtime",
+                "description": "Suspend then hibernate",
+                "command": ["systemctl", "suspend-then-hibernate"],
+                "enabled": true,
+                "dangerous": false
+            }
+        ],
+        "dragThreshold": 50,
+        "vimKeybinds": false,
+        "enableDangerousActions": false,
+        "maxShown": 7,
+        "maxWallpapers": 9,
+        "specialPrefix": "@",
+        "useFuzzy": {
+            "apps": false,
+            "actions": false,
+            "schemes": false,
+            "variants": false,
+            "wallpapers": false
+        },
+        "showOnHover": false,
+        "hiddenApps": []
+    },
+    "lock": {
+        "recolourLogo": false
+    },
+    "notifs": {
+        "actionOnClick": false,
+        "clearThreshold": 0.3,
+        "defaultExpireTimeout": 5000,
+        "expandThreshold": 20,
+        "expire": false
+    },
+    "osd": {
+        "enabled": true,
+        "enableBrightness": true,
+        "enableMicrophone": false,
+        "hideDelay": 2000
+    },
+    "paths": {
+        "mediaGif": "root:/assets/bongocat.gif",
+        "sessionGif": "root:/assets/kurukuru.gif",
+        "wallpaperDir": "~/Pictures/Wallpapers"
+    },
+    "services": {
+        "audioIncrement": 0.1,
+        "maxVolume": 1.0,
+        "defaultPlayer": "Spotify",
+        "gpuType": "",
+        "playerAliases": [{ "from": "com.github.th_ch.youtube_music", "to": "YT Music" }],
+        "weatherLocation": "",
+        "useFahrenheit": false,
+        "useTwelveHourClock": true,
+        "smartScheme": true,
+        "visualiserBars": 45
+    },
+    "session": {
+        "dragThreshold": 30,
+        "enabled": true,
+        "vimKeybinds": false,
+        "commands": {
+            "logout": ["loginctl", "terminate-user", ""],
+            "shutdown": ["systemctl", "poweroff"],
+            "hibernate": ["systemctl", "hibernate"],
+            "reboot": ["systemctl", "reboot"]
+        }
+    },
+    "sidebar": {
+        "dragThreshold": 80,
+        "enabled": true
+    },
+    "utilities": {
+        "enabled": true,
+        "maxToasts": 4,
+        "toasts": {
+            "audioInputChanged": true,
+            "audioOutputChanged": true,
+            "capsLockChanged": true,
+            "chargingChanged": true,
+            "configLoaded": false,
+            "dndChanged": true,
+            "gameModeChanged": true,
+            "kbLayoutChanged": true,
+            "numLockChanged": true,
+            "vpnChanged": true,
+            "nowPlaying": false
+        },
+        "vpn": {
+            "enabled": false,
+            "provider": [
+                {
+                    "name": "wireguard",
+                    "interface": "your-connection-name",
+                    "displayName": "Wireguard (Your VPN)"
+                }
+            ]
+        }
+    }
+}
+SHELL_JSON
+    
+    # cli.json
+    cat > "$HOME/.config/caelestia/cli.json" <<'CLI_JSON'
+{
+    "record": {
+        "extraArgs": []
+    },
+    "wallpaper": {
+        "postHook": "echo $WALLPAPER_PATH"  
+    },
+    "theme": {
+        "enableTerm": true,
+        "enableHypr": true,
+        "enableDiscord": true,
+        "enableSpicetify": true,
+        "enableFuzzel": true,
+        "enableBtop": true,
+        "enableGtk": true,
+        "enableQt": true
+    },
+    "toggles": {
+        "communication": {
+            "discord": {
+                "enable": true,
+                "match": [{ "class": "discord" }],
+                "command": ["discord"],
+                "move": true
+            },
+            "whatsapp": {
+                "enable": true,
+                "match": [{ "class": "whatsapp" }],
+                "move": true
+            }
+        },
+        "music": {
+            "spotify": {
+                "enable": true,
+                "match": [{ "class": "Spotify" }, { "initialTitle": "Spotify" }, { "initialTitle": "Spotify Free" }],
+                "command": ["spicetify", "watch", "-s"],
+                "move": true
+            },
+            "feishin": {
+                "enable": true,
+                "match": [{ "class": "feishin" }],
+                "move": true
+            }
+        },
+        "sysmon": {
+            "btop": {
+                "enable": true,
+                "match": [{ "class": "btop", "title": "btop", "workspace": { "name": "special:sysmon" } }],
+                "command": ["kitty", "-a", "btop", "-T", "btop", "fish", "-C", "exec btop"]
+            }
+        },
+        "todo": {
+            "todoist": {
+                "enable": true,
+                "match": [{ "class": "Todoist" }],
+                "command": ["todoist"],
+                "move": true
+            }
+        }
+    }
+}
+CLI_JSON
+
+    # config.jsonc
+    cat > "$HOME/.config/fastfetch/config.jsonc" <<'FASTFETCH_CONFIG_JSON'
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "source": "\"$(~/.config/fastfetch/fastfetch.sh logo)\"",
+    "height": 18,
+    "padding": {
+        "top": 2,
+        "left": 1
+    }
+  },
+  "modules": [
+    "break",
+    {
+      "type": "title",
+      "key": "  ",
+      "format": "Don't work hard - Work smart!"
+    },
+    {
+      "type": "custom",
+      "format": "╭───────────────────────────────────────────────╮"
+    },
+    {
+      "type": "chassis",
+      "key": "• 󰇺 Chassis",
+      "format": "{1} {2} {3}"
+    },
+    {
+      "type": "os",
+      "key": "• 󰣇 OS",
+      "format": "{2}",
+      "keyColor": "red"
+    },
+    {
+      "type": "kernel",
+      "key": "•  Kernel",
+      "format": "{2}",
+      "keyColor": "red"
+    },
+    {
+      "type": "packages",
+      "key": "• 󰏗 Packages",
+      "keyColor": "green"
+    },
+    {
+      "type": "display",
+      "key": "• 󰍹 Display",
+      "format": "{1}x{2} @ {3}Hz [{7}]",
+      "keyColor": "green"
+    },
+    {
+      "type": "terminal",
+      "key": "•  Terminal",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "wm",
+      "key": "• 󱗃 WM",
+      "format": "{2}",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "custom",
+      "format": "╰───────────────────────────────────────────────╯"
+    },
+    "break",
+    {
+      "type": "title",
+      "key": "  ",
+      "format": "{6} {7} Hoàng Đức"
+    },
+    {
+      "type": "custom",
+      "format": "╭───────────────────────────────────────────────╮"
+    },
+    {
+      "type": "cpu",
+      "format": "{1} @ {7}",
+      "key": "•  CPU",
+      "keyColor": "blue"
+    },
+    {
+      "type": "gpu",
+      "format": "{1} {2}",
+      "key": "• 󰊴 GPU",
+      "keyColor": "blue"
+    },
+    {
+      "type": "gpu",
+      "format": "{3}",
+      "key": "•  GPU Driver",
+      "keyColor": "magenta"
+    },
+    {
+      "type": "memory",
+      "key": "•  Memory ",
+      "keyColor": "magenta"
+    },
+    {
+      "type": "disk",
+      "key": "• 󱦟 OS Age ",
+      "folders": "/",
+      "keyColor": "red",
+      "format": "{days} days"
+    },
+    {
+      "type": "uptime",
+      "key": "• 󱫐 Uptime ",
+      "keyColor": "red"
+    },
+    {
+      "type": "custom",
+      "format": "╰───────────────────────────────────────────────╯"
+    },
+    {
+      "type": "colors",
+      "paddingLeft": 2,
+      "symbol": "circle"
+    },
+    "break"
+  ]
+}
+FASTFETCH_CONFIG_JSON
+
+    cat > "$HOME/.config/fish/functions/fish_greeting.fish" << 'FISH_SCRIPT'
+function fish_greeting
+    set_color normal
+    fastfetch --logo-type kitty
+end
+FISH_SCRIPT
+
+    cat > "$HOME/.config/fastfetch/fastfetch.sh" << 'FASTFETCH_LOGO_SCRIPT'
+if [ -z "${*}" ]; then
+  clear
+  exec fastfetch --logo-type kitty
+  exit
+fi
+
+USAGE() {
+  cat <<USAGE
+Usage: fastfetch [commands] [options]
+
+commands:
+  logo    Display a random logo
+
+options:
+  -h, --help,     Display command's help message
+
+USAGE
+}
+
+confDir="${XDG_CONFIG_HOME:-$HOME/.config}"
+image_dirs=()
+
+case $1 in
+logo) # eats around 13 ms
+  random() {
+    (
+      image_dirs+=("${confDir}/fastfetch/logo")
+      [ -f "$HOME/.face.icon" ] && image_dirs+=("$HOME/.face.icon")
+      # also .bash_logout may be matched with this find
+      find -L "${image_dirs[@]}" -maxdepth 1 -type f \( -name "wall.quad" -o -name "wall.sqre" -o -name "*.icon" -o -name "*logo*" -o -name "*.png" \) ! -path "*/wall.set*" ! -path "*/wallpapers/*.png" 2>/dev/null
+    ) | shuf -n 1
+  }
+  help() {
+    cat <<HELP
+Usage: ${0##*/} logo [option]
+
+options:
+  --quad    Display a quad wallpaper logo
+  --sqre    Display a square wallpaper logo
+  --prof    Display your profile picture (~/.face.icon)
+  --os      Display the distro logo
+  --local   Display a logo inside the fastfetch logo directory
+  --wall    Display a logo inside the wallbash fastfetch directory
+  --theme   Display a logo inside the hyde theme directory
+  --rand    Display a random logo
+  *         Display a random logo
+  *help*    Display this help message
+
+Note: Options can be combined to search across multiple sources
+Example: ${0##*/} logo --local --os --prof
+HELP
+  }
+
+  shift
+  [ -z "${*}" ] && random && exit
+  [[ "$1" = "--rand" ]] && random && exit
+  [[ "$1" = *"help"* ]] && help && exit
+  (
+    image_dirs=()
+    for arg in "$@"; do
+      case $arg in
+      --prof)
+        [ -f "$HOME/.face.icon" ] && image_dirs+=("$HOME/.face.icon")
+        ;;
+      --local)
+        image_dirs+=("${confDir}/fastfetch/logo")
+        ;;
+      esac
+    done
+    find -L "${image_dirs[@]}" -maxdepth 1 -type f \( -name "wall.quad" -o -name "wall.sqre" -o -name "*.icon" -o -name "*logo*" -o -name "*.png" \) ! -path "*/wall.set*" ! -path "*/wallpapers/*.png" 2>/dev/null
+  ) | shuf -n 1
+
+  ;;
+--select | -S)
+  :
+
+  ;;
+help | --help | -h)
+  USAGE
+  ;;
+*)
+  clear
+  exec fastfetch --logo-type kitty
+  ;;
+esac
+FASTFETCH_LOGO_SCRIPT
+
+    chmod +x $HOME/.config/fastfetch/fastfetch.sh
+
+    cat > "$HOME/.config/kitty/kitty.conf" <<'KITTY_CONFIG'
+# This is the configuration file for kitty terminal
+# For more information, see https://sw.kovidgoyal.net/kitty/conf.html
+# For your custom configurations, put it in ./kitty.conf
+#font_family CaskaydiaCove Nerd Font Mono
+#bold_font auto
+#italic_font auto
+#bold_italic_font auto
+#enable_audio_bell no
+#font_size 9.0
+#window_padding_width 25
+#cursor_trail 1
+
+# Themes can override any settings in this file
+include theme.conf
+background_opacity 0.60
+#hide_window_decorations yes
+#confirm_os_window_close 0
+
+# Minimal Tab bar styling 
+tab_bar_edge                bottom
+tab_bar_style               powerline
+tab_powerline_style         slanted
+tab_title_template          {title}{' :{}:'.format(num_windows) if num_windows > 1 else ''}
+
+# remap to open new kitty tab in the same directory (default is home dir)
+# map ctrl+shift+t            new_tab_with_cwd
+
+# Uncomment the following 4 lines to minimize kitty latency (higher energy usage)
+# input_delay 0
+# repaint_delay 2
+# sync_to_monitor no
+# wayland_enable_ime no
+KITTY_CONFIG
+
+    cat > "$HOME/.config/kitty/theme.conf" <<'KITTY_THEMES'
+
+## name:     Catppuccin Mocha 🌿
+## author:   Pocco81 (https://github.com/Pocco81)
+## license:  MIT
+## upstream: https://github.com/catppuccin/kitty/blob/main/mocha.conf
+## blurb:    Soothing pastel theme for the high-spirited!
+
+
+
+# The basic colors
+foreground              #CDD6F4
+background              #1E1E2E
+selection_foreground    #1E1E2E
+selection_background    #F5E0DC
+
+# Cursor colors
+cursor                  #F5E0DC
+cursor_text_color       #1E1E2E
+
+# URL underline color when hovering with mouse
+url_color               #B4BEFE
+
+# Kitty window border colors
+active_border_color     #CBA6F7
+inactive_border_color   #8E95B3
+bell_border_color       #EBA0AC
+
+# OS Window titlebar colors
+wayland_titlebar_color system
+macos_titlebar_color system
+
+# Tab bar colors
+active_tab_foreground   #11111B
+active_tab_background   #CBA6F7
+inactive_tab_foreground #CDD6F4
+inactive_tab_background #181825
+tab_bar_background      #11111B
+
+# Colors for marks (marked text in the terminal)
+mark1_foreground #1E1E2E
+mark1_background #87B0F9
+mark2_foreground #1E1E2E
+mark2_background #CBA6F7
+mark3_foreground #1E1E2E
+mark3_background #74C7EC
+
+# The 16 terminal colors
+
+# black
+color0 #43465A
+color8 #43465A
+
+# red
+color1 #F38BA8
+color9 #F38BA8
+
+# green
+color2  #A6E3A1
+color10 #A6E3A1
+
+# yellow
+color3  #F9E2AF
+color11 #F9E2AF
+
+# blue
+color4  #87B0F9
+color12 #87B0F9
+
+# magenta
+color5  #F5C2E7
+color13 #F5C2E7
+
+# cyan
+color6  #94E2D5
+color14 #94E2D5
+
+# white
+color7  #CDD6F4
+color15 #A1A8C9
+KITTY_THEMES
+
+}
+
+# ===== MAIN =====
+
+main() {
+    show_banner
+    init_state
+    # Execute all setup functions
+    setup_nvidia_cleanup
+    setup_system_update
+    setup_nvidia_drivers
+    setup_base_packages
+    setup_hyprland_caelestia
+    setup_gaming
+    setup_development
+    setup_multimedia
+    setup_ai_ml
+    setup_streaming
+    setup_system_optimization
+    setup_gdm
+    setup_directories
+    setup_utilities
+    setup_configs
+    
+    # Done
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║      ✓ INSTALLATION COMPLETED SUCCESSFULLY!                ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo "Logs: $LOG"
+    echo "Backup: $BACKUP_DIR"
+    echo ""
+}
+
+main "$@"
