@@ -1126,9 +1126,9 @@ main() {
     install_helper
     clone_repo
     # Execute all setup functions
-    setup_nvidia_cleanup
+    #setup_nvidia_cleanup
     setup_system_update
-    setup_nvidia_drivers
+    #setup_nvidia_drivers
     setup_meta_packages
     setup_gaming
     setup_development
