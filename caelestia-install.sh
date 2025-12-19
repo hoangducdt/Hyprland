@@ -762,6 +762,7 @@ setup_meta_packages() {
 		"fcitx5-bamboo-git"
 		
 		"gdm"
+"gdm-settings"
 		
 		# Fonts
 		"ttf-jetbrains-mono-nerd"
@@ -965,21 +966,19 @@ EOF
 
 setup_gdm() {
     if [ "$(is_completed 'gdm')" = "yes" ]; then
-        log "✓ GDM already configured"
+        log "✓ GDM already installed"
         return 0
     fi
     
-    log "Configuring GDM..."
+    log "Installing GDM...
     
-	# Enable Wayland for GDM
-    if [ -f /etc/gdm/custom.conf ]; then
-        backup_file "/etc/gdm/custom.conf"
-        sudo sed -i 's/^#WaylandEnable=false/WaylandEnable=true/' /etc/gdm/custom.conf
-    fi
+    # Bật GDM
+    sudo systemctl enable gdm.service
     
     mark_completed "gdm"
-    log "✓ GDM configured"
+    log "✓ GDM installed and enabled"
 }
+
 
 setup_directories() {
     if [ "$(is_completed 'directories')" = "yes" ]; then
@@ -1204,8 +1203,8 @@ main() {
     clone_repo
     # Execute all setup functions
     setup_nvidia_cleanup
-    setup_system_update
-    setup_nvidia_drivers
+    #setup_system_update
+    #setup_nvidia_drivers
     setup_meta_packages
     setup_gaming
     setup_development
