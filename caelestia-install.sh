@@ -383,7 +383,7 @@ setup_nvidia_drivers() {
     fi
     
     log "Checking currently installed NVIDIA profiles..."
-    chwd --list --installed | grep -i nvidia || log "No NVIDIA profile currently installed"
+    chwd --list-installed | grep -i nvidia || log "No NVIDIA profile currently installed"
     echo ""
     
     log "Available NVIDIA driver profiles:"
