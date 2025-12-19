@@ -193,7 +193,7 @@ install_package() {
     fi
     
     while [ $retry -lt $max_retries ]; do
-        if sudo pacman -S --needed --noconfirm "$pkg" 2>&1 | tee -a "$LOG"; then
+        if sudo pacman -S --noconfirm "$pkg" 2>&1 | tee -a "$LOG"; then
             return 0
         fi
         
@@ -223,7 +223,7 @@ install_aur_package() {
     
     log "Installing AUR: $pkg (timeout: ${timeout_seconds}s)"
     
-    if timeout "$timeout_seconds" yay -S --noconfirm --needed "$pkg" 2>&1 | tee -a "$LOG"; then
+    if timeout "$timeout_seconds" yay -S --noconfirm "$pkg" 2>&1 | tee -a "$LOG"; then
         return 0
     else
         warn "Failed to install AUR package: $pkg"
