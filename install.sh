@@ -1226,8 +1226,8 @@ setup_configs() {
 	}
 	
 	# Sync EVERYTHING recursively including dotfiles
-	log "Syncing ALL configuration items recursively..."
-	find "$configs_dir" -mindepth 1 \( -name ".*" -o ! -name ".*" \) ! -name "." ! -name ".." -print0 | while IFS= read -r -d '' item; do
+	log "Syncing configuration items..."
+	find "$configs_dir" -maxdepth 1 \( -name ".*" -o ! -name ".*" \) ! -name "." ! -name ".." -print0 | while IFS= read -r -d '' item; do
 	    # Calculate relative path
 	    local relative_path="${item#"$configs_dir"/}"
 	    local target_path="$config_home/$relative_path"
