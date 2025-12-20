@@ -125,22 +125,22 @@ show_banner() {
     clear
     echo -e "${MAGENTA}"
     cat << "EOF"
-╭────────────────────────────────────────────────────────────────────────────────────────────────╮
-│ ▀████    ███                                                 ▀█████████▄             █         │
-│   ███    ███                 ▀▀▀▀                              ███    ███          █           │
-│   ███    ███    ▄██████▄  ▀███████▄  ▀████████▄   ▄██████▄     ███    ███ ███   ███▀ ▄██████▄  │
-│  ▄███▄▄▄▄███▄▄ ███    ███       ▀███  ███    ███ ███    ███   ▄███▄▄▄ ███ ███   ███ ███    ███ │
-│ ▀▀███▀▀▀▀███▀  ███    ███  ▄████████  ███    ███ ███    ███  ▀▀███▀▀▀ ███ ███   ███ ███        │
-│   ███    ███   ███    ███ ███    ███  ███    ███ ███    ███    ███    ███ ███   ███ ███        │
-│   ███    ███   ███    ███ ███    ███  ███    ███ ███    ███    ███    ███ ███   ███ ███    ███ │
-│   ███    ███    ▀██████▀   ▀████████▄ ███    ███  ▀████████  ▄█████████▀   ▀█████▀   ▀██████▀  │
-│                                                        ▄███                                    │
-│                                                 ▄████████▀                                     │
-│   Caelestia Installer - Optimized For CachyOS                                                  │
-│   • Target System: CachyOS + Hyprland + Caelestia                                              │
-│   • Hardware: ROG STRIX B550-XE GAMING WIFI | Ryzen 7 5800X | RTX 3060 12GB                    │
-│   • Optimizations: Performance adjustments, Vietnamese input methods...                        │
-╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+╔════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ ▀████    ███                                                 ▀█████████▄             █         ║
+║   ███    ███                 ▀▀▀▀                              ███    ███          █           ║
+║   ███    ███    ▄██████▄  ▀███████▄  ▀████████▄   ▄██████▄     ███    ███ ███   ███▀ ▄██████▄  ║
+║  ▄███▄▄▄▄███▄▄ ███    ███       ▀███  ███    ███ ███    ███   ▄███▄▄▄ ███ ███   ███ ███    ███ ║
+║ ▀▀███▀▀▀▀███▀  ███    ███  ▄████████  ███    ███ ███    ███  ▀▀███▀▀▀ ███ ███   ███ ███        ║
+║   ███    ███   ███    ███ ███    ███  ███    ███ ███    ███    ███    ███ ███   ███ ███        ║
+║   ███    ███   ███    ███ ███    ███  ███    ███ ███    ███    ███    ███ ███   ███ ███    ███ ║
+║   ███    ███    ▀██████▀   ▀████████▄ ███    ███  ▀████████  ▄█████████▀   ▀█████▀   ▀██████▀  ║
+║                                                        ▄███                                    ║
+║                                                 ▄████████▀                                     ║
+║   Caelestia Installer - Optimized For CachyOS                                                  ║
+║   • Target System: CachyOS + Hyprland + Caelestia                                              ║
+║   • Hardware: ROG STRIX B550-XE GAMING WIFI | Ryzen 7 5800X | RTX 3060 12GB                    ║
+║   • Optimizations: Performance adjustments, Vietnamese input methods...                        ║
+╚════════════════════════════════════════════════════════════════════════════════════════════════╝
 EOF
     echo -e "${NC}"
 }
@@ -415,287 +415,460 @@ setup_meta_packages() {
     
     log "Installing base packages (CachyOS optimized)..."
     local meta_pkgs=(
-		#Caelestia
-		"caelestia-cli"
-		"caelestia-shell"
-		"hyprland"
-		"xdg-desktop-portal-gtk"
-		"hyprpicker"
-		"cliphist"
-		"inotify-tools"
-		"app2unit"
-		"trash-cli"
-		"eza"
-		"jq"
-		"adw-gtk-theme"
-        "papirus-icon-theme"
-		"qt5ct-kde"
-		"qt6ct-kde"
-		"todoist-appimage"
-		"uwsm"
-		"direnv"
+		# ==========================================================================
+		# PHASE 1: CORE SYSTEM DEPENDENCIES (Cài đầu tiên - Foundation)
+		# ==========================================================================
 		
-        # System essentials
-		"fish"
-		"kitty"
-        
-		"wl-clipboard"
-		"xdg-desktop-portal-hyprland"
+		## 1.1 Base System Libraries
+		"python"                        # Core Python runtime - Dependency của nhiều tools
+		"python-pip"                    # Python package manager
+		"python-virtualenv"             # Virtual environments
 		
-		"qt5-wayland"
-		"qt6-wayland"
+		## 1.2 Essential System Tools
+		"git-lfs"                       # Git Large File Storage - BẮT BUỘC cho UE5 assets
+		"rsync"                         # File synchronization
+		"tmux"                          # Terminal multiplexer
+		"jq"                            # JSON processor - Dependency của scripts
+        "i2c-tools"                     # I2C/SMBus utilities for sensors/RGB
+        "dmidecode"                     # Hardware information decoder
+        "fwupd"                         # Firmware update manager
+		"inotify-tools"                 # File system event monitoring
 		
-		"gnome-keyring"
-		"polkit-gnome"
+		## 1.3 Compression Tools (Dependencies cho nhiều packages)
+		"zip"                           # ZIP compression
+		"unzip"                         # ZIP extraction
+		"p7zip"                         # 7-Zip compression
+		"unrar"                         # RAR extraction
+        "ark"                           # KDE archive manager - GUI for all formats
 		
-		"tumbler"
-		"ffmpegthumbnailer"
-		"libgsf"
-		"thunar"
+		## 1.4 File System Support
+		"btrfs-progs"                   # Btrfs file system utilities
+		"exfatprogs"                    # exFAT file system support
+		"ntfs-3g"                       # NTFS read/write support
+		"dosfstools"                    # FAT/FAT32 utilities
 		
-        # File systems (with CachyOS optimizations where available)
-        "btrfs-progs"
-        "exfatprogs"
-        "ntfs-3g"
-        "dosfstools"
-        
-        # Compression
-        "zip"
-        "unzip"
-        "p7zip"
-        "unrar"
-		"rsync"
-		"tmux"
-        "starship"
-		"eza"
-		"bat"
-		"ripgrep"
-		"fd"
-		"fzf"
-		"zoxide"
-        "nvtop"
-		"amdgpu_top"
-		"iotop"
-		"iftop"
+		# ==========================================================================
+		# PHASE 2: DISPLAY & GRAPHICS FOUNDATION
+		# ==========================================================================
 		
-        # System tools
-        "htop"
-        "btop" # NVIDIA GPU monitor
-        "neofetch"
-        "fastfetch"
+		## 2.1 Wayland Core
+		"qt5-wayland"                   # Qt5 Wayland support
+		"qt6-wayland"                   # Qt6 Wayland support
+		"wl-clipboard"                  # Wayland clipboard utilities
+		"xdg-desktop-portal-gtk"        # XDG portal for file dialogs
+		"xdg-desktop-portal-hyprland"   # Hyprland-specific portal
 		
-		# Disk management
-        "gparted"
-        "gnome-disk-utility"
+		## 2.2 Graphics Libraries (Cài trước GPU drivers/apps)
+		"vulkan-icd-loader"             # Vulkan loader - BẮT BUỘC cho gaming/UE5
+		"lib32-vulkan-icd-loader"       # 32-bit Vulkan support
 		
-		# PDF viewer
-        "zathura"
-        "zathura-pdf-poppler"
-        
-        # Network
-        "networkmanager"
-        "network-manager-applet"
-        "nm-connection-editor"
-        
-        # Python (essential for many tools)
-        "python"
-        "python-pip"
-        "python-virtualenv"
-		"python-numpy"
-		"python-pandas"
-		"jupyter-notebook"
-        "python-scikit-learn"
-		"python-matplotlib"
-		"python-pillow"
-		"python-scipy"
+		## 2.3 NVIDIA Hardware Acceleration
+		"libva-nvidia-driver"           # VA-API for NVIDIA - Video acceleration
+		"lib32-nvidia-utils"            # 32-bit NVIDIA utilities - Cho gaming
 		
-		"cuda"
-		"cudnn"
-		"python-pytorch-cuda"
-		"python-torchvision-cuda"
-		"python-torchaudio-cuda"
-		"python-transformers"
-		"python-accelerate"
+		# ==========================================================================
+		# PHASE 3: AUDIO FOUNDATION (Cài trước multimedia apps)
+		# ==========================================================================
 		
-		# Audio
-        "pipewire"
-        "pipewire-pulse"
-        "pipewire-alsa"
-        "pipewire-jack"
-        "wireplumber"
-        "pavucontrol"               # GUI volume control
-        "helvum"                    # Pipewire patchbay
-		"v4l2loopback-dkms"
-		"gstreamer-vaapi"
-		"noise-suppression-for-voice"
-        
-        # Video players
-        "mpv"
-        "vlc"
-        
-        # Image viewers/editors
-        "imv"                       # Wayland image viewer
-        "gimp"
-        "inkscape"
-        
-        # Audio production
-        "audacity"
-        
-        # Video editing
-        "kdenlive"
-        "obs-studio"
-        
-        # Codecs
-        "gst-plugins-good"
-        "gst-plugins-bad"
-        "gst-plugins-ugly"
-        "gst-libav"
-        "ffmpeg"
-        
-        # Nvidia hardware acceleration
-        "libva-nvidia-driver"
+		## 3.1 PipeWire Core (Modern audio server)
+		"pipewire"                      # Core audio/video server
+		"pipewire-pulse"                # PulseAudio replacement
+		"pipewire-alsa"                 # ALSA support
+		"pipewire-jack"                 # JACK audio support - Cho audio production
+		"wireplumber"                   # Session manager for PipeWire
 		
-		"gstreamer"
-		"gst-plugins-base"
-        "libvorbis"
-		"lib32-libvorbis"
-		"opus"
-		"lib32-opus"
-        "flac"
-		"lib32-flac"
-		"x264"
-		"x265"
+		## 3.2 Audio Tools
+		"pavucontrol"                   # GUI volume control
+		"helvum"                        # PipeWire patchbay GUI
+        "easyeffects"                   # Audio effects for PipeWire
+        "qpwgraph"                      # PipeWire graph editor
+		"v4l2loopback-dkms"             # Virtual video device - Cho OBS
+		"noise-suppression-for-voice"   # AI noise cancellation - Cho streaming
 		
-		# Code editors
-        "neovim"
-        "codium" # VSCode
-        
-        # Version control
-        "git"
-        "github-cli"
-        
-        # Build tools (already in base-devel but ensure)
-        "cmake"
-        "ninja"
-        "meson"
-        
-        # Compilers
-        "gcc"
-        "clang"
-        
-        # Languages
-        "nodejs"
-        "npm"
-        "rust"
-        "go"
-        
-        # Containers
-        "docker"
-        "docker-compose"
-        
-        # Database
-        "postgresql"
-        "redis"
-        
-        # API testing
-        "postman-bin"
+		# ==========================================================================
+		# PHASE 4: MULTIMEDIA CODECS (Dependencies cho video/audio apps)
+		# ==========================================================================
 		
-		"dotnet-sdk"
-		"dotnet-runtime"
-		"dotnet-sdk-9.0"
-		"dotnet-sdk-8.0"
-        "aspnet-runtime"
-		"mono"
-		"mono-msbuild"
-        "docker"
-		"docker-compose"
+		## 4.1 GStreamer Framework
+		"gstreamer"                     # Multimedia framework core
+		"gstreamer-vaapi"               # VA-API acceleration for GStreamer
+		"gst-plugins-base"              # Base plugins
+		"gst-plugins-good"              # Good quality plugins
+		"gst-plugins-bad"               # Experimental plugins
+		"gst-plugins-ugly"              # Legally restricted plugins
+		"gst-libav"                     # Libav wrapper plugin
 		
-		# Gaming packages
-		"cachyos-gaming-meta" #depends=alsa-plugins/giflib/glfw/gst-plugins-base-libs/lib32-alsa-plugins/lib32-giflib/lib32-gst-plugins-base-libs/lib32-gtk3/lib32-libjpeg-turbo/lib32-libva/lib32-mpg123/lib32-ocl-icd/lib32-opencl-icd-loader/lib32-openal/libjpeg-turbo/libva/libxslt/mpg123/opencl-icd-loader/openal/proton-cachyos-slr/umu-launcher/protontricks/ttf-liberation/wine-cachyos-opt/winetricks/vulkan-tools
-		"cachyos-gaming-applications" #depends=gamescope/goverlay/heroic-games-launcher/lib32-mangohud/lutris/mangohud/steam/wqy-zenhei
-		"lib32-vulkan-icd-loader"
-        "lib32-nvidia-utils" 
-        "vulkan-icd-loader"
-        "gamemode"
-        "lib32-gamemode"
-        "xpadneo-dkms" # Xbox controller
+		## 4.2 FFmpeg & Codecs
+		"ffmpeg"                        # Complete multimedia solution
+		"lib32-ffmpeg"                  # 32-bit FFmpeg - Cho gaming/Proton
+		"x264"                          # H.264 encoder
+		"x265"                          # HEVC encoder
 		
-		#AI/ML
-		"ollama-cuda"
+		## 4.3 Audio Codecs
+		"libvorbis"                     # Vorbis audio codec
+		"lib32-libvorbis"               # 32-bit Vorbis
+		"opus"                          # Opus audio codec
+		"lib32-opus"                    # 32-bit Opus
+		"flac"                          # FLAC lossless audio
+		"lib32-flac"                    # 32-bit FLAC
 		
-		"blender" # 3D sculpting
-		"openimagedenoise"
-		"opencolorio"
-		"opensubdiv"
-        "openvdb"
-		"embree"
-		"openimageio"
-		"alembic"
-		"openjpeg2"
-        "openexr"
-		"libspnav"
+		# ==========================================================================
+		# PHASE 5: DEVELOPMENT TOOLS FOUNDATION
+		# ==========================================================================
 		
-		"gimp"
-		"gimp-plugin-gmic"
-        "krita" # Digital painting
-		"inkscape" # Vector graphics
-        "kdenlive" # Video
-		"frei0r-plugins"
-		"mediainfo"
-		"mlt"
-        "audacity" # Audio
-		"ardour" # DAW
-		"scribus"
-        "darktable" # Photo workflow
-		"rawtherapee"
-        "imagemagick"
-		"graphicsmagick"
-		"potrace"
-		"fontforge"
+		## 5.1 Build System Core (Cài trước compilers)
+		"cmake"                         # Cross-platform build system - UE5 dependency
+		"ninja"                         # Fast build tool - UE5 build system
+		"meson"                         # Modern build system
+		"ccache"                        # Compiler cache - TĂNG TỐC build UE5
 		
-		"irqbalance"                # IRQ load balancing
-        "cpupower"                  # CPU frequency scaling
-        "thermald"                  # Thermal management
-        "tlp"                       # Power management
-        "powertop"                  # Power analysis
-        "preload"                   # Application preloader
+		## 5.2 Compilers & Linkers
+		"gcc"                           # GNU C/C++ compiler
+		"clang"                         # LLVM C/C++ compiler - UE5 prefer Clang
+		"lld"                           # LLVM linker - NHANH hơn ld cho UE5
 		
-		"wlr-randr"
-		"kanshi"
-		"nwg-displays"
+		## 5.3 Version Control
+		"github-cli"                    # GitHub CLI tool
+		"github-desktop"                # GitHub Desktop GUI
 		
-		"lib32-ffmpeg"
-		"protonup-qt" #Proton-GE manager
-		"microsoft-edge-stable-bin"
-		"docker-desktop"
-		"rider"
-		"github-desktop"
-		"lmstudio"
-		"davinci-resolve"
-		"natron"
-		"obs-vaapi"
-		"obs-nvfbc"
-		"obs-vkcapture"
-		"obs-websocket"
-		"vesktop-bin"
-		"openrgb"
+		## 5.4 Programming Languages
+		"nodejs"                        # Node.js runtime
+		"npm"                           # Node package manager
+		"rust"                          # Rust language
+		"go"                            # Go language
 		
-		#Vietnamese input
-		"fcitx5"
-		"fcitx5-qt"
-		"fcitx5-gtk"
-		"fcitx5-configtool"
-		"fcitx5-bamboo-git"
+		## 5.5 Python Development
+		"python-numpy"                  # Numerical computing
+		"python-pandas"                 # Data analysis
+		"python-matplotlib"             # Plotting library
+		"python-pillow"                 # Image processing
+		"python-scipy"                  # Scientific computing
+		"python-scikit-learn"           # Machine learning
+		"jupyter-notebook"              # Interactive notebooks
 		
-		"gdm"
-		"gdm-settings"
+		## 5.6 3D Development Libraries (Cho UE5)
+		"assimp"                        # 3D model import library - UE5 model import
+		"fbx-sdk"                       # FBX SDK - Import/export FBX for UE5
+		"helix-cli"                     # Perforce Helix client - Team collaboration
 		
-		# Fonts
-		"ttf-jetbrains-mono-nerd"
-        "adobe-source-code-pro-fonts"
-        "ttf-liberation"
-        "ttf-dejavu"
-    )
+		# ==========================================================================
+		# PHASE 6: .NET DEVELOPMENT STACK
+		# ==========================================================================
+		
+		## 6.1 .NET Runtime & SDK (Theo thứ tự: Runtime → SDK cũ → SDK mới)
+		"dotnet-runtime"                # .NET runtime
+		"dotnet-sdk-8.0"                # .NET 8.0 LTS SDK
+		"dotnet-sdk-9.0"                # .NET 9.0 Latest SDK
+		"dotnet-sdk"                    # Latest SDK meta-package
+		"aspnet-runtime"                # ASP.NET Core runtime
+		"mono"                          # Mono framework - Cross-platform .NET
+		"mono-msbuild"                  # MSBuild for Mono
+		
+		# ==========================================================================
+		# PHASE 7: CONTAINERIZATION & DATABASES
+		# ==========================================================================
+		
+		## 7.1 Container Platform
+		"docker-desktop"                # Docker Desktop - Bao gồm docker + compose
+										# ⚠️ KHÔNG cài riêng "docker" và "docker-compose"
+		
+		## 7.2 Databases
+		"postgresql"                    # PostgreSQL database
+		"redis"                         # Redis in-memory database
+		
+		# ==========================================================================
+		# PHASE 8: AI/ML STACK
+		# ==========================================================================
+		
+		## 8.1 CUDA Foundation (Cài trước PyTorch)
+		"cuda"                          # NVIDIA CUDA Toolkit - BẮT BUỘC cho AI/ML
+		"cudnn"                         # CUDA Deep Neural Network library
+		
+		## 8.2 PyTorch with CUDA
+		"python-pytorch-cuda"           # PyTorch with CUDA support
+		"python-torchvision-cuda"       # Computer vision for PyTorch
+		"python-torchaudio-cuda"        # Audio processing for PyTorch
+		"python-transformers"           # Hugging Face Transformers
+		"python-accelerate"             # Training acceleration library
+		
+		## 8.3 Local AI Runtime
+		"ollama-cuda"                   # Local LLM inference with CUDA
+		
+		# ==========================================================================
+		# PHASE 9: GAMING STACK
+		# ==========================================================================
+		
+		## 9.1 Gaming Core
+		"gamemode"                      # CPU governor optimization for gaming
+		"lib32-gamemode"                # 32-bit gamemode
+		"xpadneo-dkms"                  # Xbox controller support
+		
+		## 9.2 CachyOS Gaming Meta-packages (Bao gồm nhiều dependencies)
+		"cachyos-gaming-meta"           # Includes: Wine, Proton, Vulkan tools, lib32 libs
+										# Dependencies: alsa-plugins, giflib, glfw, gst-plugins-base-libs
+										#               lib32-* variants, proton-cachyos-slr, umu-launcher
+										#               protontricks, wine-cachyos-opt, winetricks, vulkan-tools
+		
+		"cachyos-gaming-applications"   # Includes: Steam, Lutris, Heroic, MangoHud, Gamescope
+										# Dependencies: gamescope, goverlay, heroic-games-launcher
+										#               lib32-mangohud, mangohud, steam, wqy-zenhei
+		
+		## 9.3 Gaming Utilities
+		"protonup-qt"                   # Proton-GE version manager GUI
+		
+		# ==========================================================================
+		# PHASE 10: 3D CREATION & BLENDER ECOSYSTEM
+		# ==========================================================================
+		
+		## 10.1 Blender Core
+		"blender"                       # 3D creation suite - UE5 asset creation
+		
+		## 10.2 Blender Dependencies (Render & Import/Export)
+		"openimagedenoise"              # AI-powered denoising - OptiX render
+		"opencolorio"                   # Color management
+		"opensubdiv"                    # Subdivision surfaces
+		"openvdb"                       # Volumetric data structure
+		"embree"                        # Ray tracing kernel
+		"openimageio"                   # Image I/O library
+		"alembic"                       # Animation interchange - UE5 ↔ Blender
+		"openjpeg2"                     # JPEG 2000 codec
+		"openexr"                       # HDR image format
+		"libspnav"                      # 3D mouse support
+		
+		# ==========================================================================
+		# PHASE 11: 2D GRAPHICS & DESIGN TOOLS
+		# ==========================================================================
+		
+		## 11.1 Raster Graphics
+		"imv"       					# Wayland-native image viewer - Lightweight & fast
+        "gwenview"                      # KDE image viewer - Feature-rich with editing tools
+		"gimp"                          # GNU Image Manipulation Program
+		"gimp-plugin-gmic"              # G'MIC plugin for GIMP
+		"krita"                         # Digital painting
+		
+		## 11.2 Vector Graphics
+		"inkscape"                      # Vector graphics editor
+		
+		## 11.3 Photo Editing
+		"darktable"                     # RAW photo workflow
+		"rawtherapee"                   # Advanced RAW editor
+		
+		## 11.4 Image Processing
+		"imagemagick"                   # Command-line image processing
+		"graphicsmagick"                # Image processing fork
+		"potrace"                       # Bitmap to vector tracing
+		
+		## 11.5 Font Tools
+		"fontforge"                     # Font editor
+		
+		# ==========================================================================
+		# PHASE 12: VIDEO & AUDIO PRODUCTION
+		# ==========================================================================
+		
+		## 12.1 Video Editing
+		"kdenlive"                      # Video editor
+		"frei0r-plugins"                # Video effects plugins
+		"mediainfo"                     # Media file information
+		"mlt"                           # Multimedia framework for kdenlive
+		"davinci-resolve"               # Professional video editor - GPU accelerated
+		"natron"                        # Compositing & VFX
+		
+		## 12.2 Video Players
+		"mpv"                           # Minimalist video player
+		"vlc"                           # VLC media player
+		
+		## 12.3 Audio Production
+		"audacity"                      # Audio wave editor (2 lần trong list - chỉ giữ 1)
+		"ardour"                        # Digital Audio Workstation (DAW)
+		
+		## 12.4 Streaming & Recording
+		"obs-studio"                    # Streaming/recording software
+		"obs-vaapi"                     # VA-API plugin for OBS
+		"obs-nvfbc"                     # NVIDIA capture plugin
+		"obs-vkcapture"                 # Vulkan capture plugin
+		"obs-websocket"                 # WebSocket plugin for OBS
+		
+		# ==========================================================================
+		# PHASE 13: PUBLISHING & DOCUMENT TOOLS
+		# ==========================================================================
+		
+		"scribus"                       # Desktop publishing
+		
+		## 13.1 PDF Tools
+		"zathura"                       # Minimalist PDF viewer
+		"zathura-pdf-poppler"           # Poppler backend for zathura
+        "okular"                        # KDE document viewer - PDF/EPUB/DjVu/Comics support
+		
+		# ==========================================================================
+		# PHASE 14: PROFESSIONAL DEVELOPMENT TOOLS
+		# ==========================================================================
+		
+		## 14.1 Code Editors
+		"neovim"                        # Modern Vim
+		"codium"                        # VSCodium - Open-source VS Code
+        "kate"                          # KDE Advanced Text Editor - Multi-document interface
+		
+		## 14.2 IDEs
+		"rider"                         # JetBrains Rider - .NET/Unity/UE5 IDE
+		"lmstudio"                      # Local LLM GUI
+		
+		## 14.3 API Testing
+		"postman-bin"                   # API testing tool
+		
+		# ==========================================================================
+		# PHASE 15: HYPRLAND DESKTOP ENVIRONMENT
+		# ==========================================================================
+		
+		## 15.1 Hyprland Core
+		"hyprland"                      # Dynamic tiling Wayland compositor
+		"uwsm"                          # Wayland session manager
+		
+		## 15.2 Hyprland Utilities
+		"hyprpicker"                    # Color picker for Hyprland
+		"cliphist"                      # Clipboard manager
+		"wlr-randr"                     # Display configuration
+		"kanshi"                        # Dynamic display configuration
+		"nwg-displays"                  # Display manager GUI
+		
+		## 15.3 Caelestia Configuration
+		"caelestia-cli"                 # Caelestia CLI tools
+		"caelestia-shell"               # Caelestia shell configuration
+		
+		# ==========================================================================
+		# PHASE 16: GTK/QT THEMING & APPEARANCE
+		# ==========================================================================
+		
+		## 16.1 Themes
+		"adw-gtk-theme"                 # Adwaita GTK theme
+		"papirus-icon-theme"            # Papirus icon theme
+		"qt5ct-kde"                     # Qt5 configuration tool
+		"qt6ct-kde"                     # Qt6 configuration tool
+		
+		## 16.2 Authentication
+		"gnome-keyring"                 # Password manager
+		"polkit-gnome"                  # Polkit authentication agent
+		
+		# ==========================================================================
+		# PHASE 17: FILE MANAGER & THUMBNAILS
+		# ==========================================================================
+		
+		"thunar"                        # Lightweight file manager
+		"tumbler"                       # Thumbnail generator
+		"ffmpegthumbnailer"             # Video thumbnail generator
+		"libgsf"                        # Structured file library
+		
+		# ==========================================================================
+		# PHASE 18: TERMINAL & SHELL ENHANCEMENTS
+		# ==========================================================================
+		
+		## 18.1 Terminal Emulator
+		"fish"                          # Friendly shell
+		"kitty"                         # GPU-accelerated terminal
+		
+		## 18.2 Shell Utilities
+		"starship"                      # Cross-shell prompt
+		"eza"                           # Modern ls replacement
+		"bat"                           # Cat with syntax highlighting
+		"ripgrep"                       # Fast grep alternative
+		"fd"                            # Fast find alternative
+		"fzf"                           # Fuzzy finder
+		"zoxide"                        # Smart cd command
+		"direnv"                        # Directory-based environments
+		"trash-cli"                     # CLI trash management
+		"app2unit"                      # Systemd unit generator
+		
+		# ==========================================================================
+		# PHASE 19: SYSTEM MONITORING & MANAGEMENT
+		# ==========================================================================
+		
+		## 19.1 System Monitors
+		"htop"                          # Interactive process viewer
+		"btop"                          # Resource monitor
+		"neofetch"                      # System information
+		"fastfetch"                     # Fast system information
+		"nvtop"                         # NVIDIA GPU monitor
+        "lm_sensors"                    # Hardware monitoring sensors
+        "zenmonitor"                    # AMD Ryzen monitor GUI
+        "corectrl"                      # AMD GPU/CPU control center
+		"amdgpu_top"                    # AMD GPU monitor
+		"iotop"                         # I/O monitor
+		"iftop"                         # Network monitor
+		
+		## 19.2 Power Management
+		"irqbalance"                    # IRQ load balancing
+		"cpupower"                      # CPU frequency scaling
+		"thermald"                      # Thermal management
+		"tlp"                           # Power management
+		"powertop"                      # Power consumption analyzer
+        "ryzenadj"                      # Ryzen power adjustment
+        "auto-cpufreq"                  # Automatic CPU frequency optimization
+		"preload"                       # Application preloader
+		
+		# ==========================================================================
+		# PHASE 20: DISK & STORAGE MANAGEMENT
+		# ==========================================================================
+		
+		"gparted"                       # Partition editor GUI
+		"gnome-disk-utility"            # Disk management GUI
+		
+		# ==========================================================================
+		# PHASE 21: NETWORK MANAGEMENT
+		# ==========================================================================
+		
+		"networkmanager"                # Network connection manager
+        "iwd"                           # Intel Wireless Daemon
+        "bluez"                         # Bluetooth protocol stack
+        "bluez-utils"                   # Bluetooth utilities
+        "blueman"                       # Bluetooth manager GUI
+		"network-manager-applet"        # NetworkManager tray applet
+		"nm-connection-editor"          # NetworkManager GUI editor
+		
+		# ==========================================================================
+		# PHASE 22: DISPLAY MANAGER & LOGIN
+		# ==========================================================================
+		
+		"gdm"                           # GNOME Display Manager
+		"gdm-settings"                  # GDM configuration tool
+		
+		# ==========================================================================
+		# PHASE 23: RGB & PERIPHERAL CONTROL
+		# ==========================================================================
+		
+		"openrgb"                       # RGB lighting control
+		
+		# ==========================================================================
+		# PHASE 24: INPUT METHOD (Vietnamese)
+		# ==========================================================================
+		
+		## 24.1 Fcitx5 Core
+		"fcitx5"                        # Input method framework
+		"fcitx5-qt"                     # Qt5/Qt6 support
+		"fcitx5-gtk"                    # GTK support
+		"fcitx5-configtool"             # Configuration GUI
+		"fcitx5-bamboo-git"             # Vietnamese input method
+		
+		# ==========================================================================
+		# PHASE 25: WEB BROWSER & COMMUNICATION
+		# ==========================================================================
+		
+		"microsoft-edge-stable-bin"     # Microsoft Edge browser
+		"vesktop-bin"                   # Discord with Vencord
+		
+		# ==========================================================================
+		# PHASE 26: PRODUCTIVITY APPS
+		# ==========================================================================
+		
+		"todoist-appimage"              # Task management
+		
+		# ==========================================================================
+		# PHASE 27: FONTS
+		# ==========================================================================
+		
+		"ttf-jetbrains-mono-nerd"       # JetBrains Mono Nerd Font
+		"adobe-source-code-pro-fonts"   # Adobe Source Code Pro
+		"ttf-liberation"                # Liberation fonts
+		"ttf-dejavu"                    # DejaVu fonts
+	)
 	
     install_packages "${meta_pkgs[@]}"
 	
@@ -745,29 +918,6 @@ EOF
     
     mark_completed "gaming"
     log "✓ Gaming setup completed"
-}
-
-setup_development() {
-    if [ "$(is_completed 'development')" = "yes" ]; then
-        log "✓ Development tools already installed"
-        return 0
-    fi
-    
-    log "Installing development tools..."
-    
-    # Docker setup
-    sudo systemctl enable --now docker.service 2>/dev/null || true
-    sudo usermod -aG docker "$USER" 2>/dev/null || true
-    
-    mark_completed "development"
-    log "✓ Development tools installed"
-    
-    # Enable Docker
-    sudo systemctl enable docker
-    sudo usermod -aG docker "$USER"
-    
-    mark_completed "development"
-    log "✓ Development tools installed"
 }
 
 setup_multimedia() {
@@ -882,6 +1032,108 @@ EOF
     log "✓ System optimization completed"
 }
 
+setup_i2c_for_rgb() {
+    if [ "$(is_completed 'i2c_setup')" = "yes" ]; then
+        log "✓ i2c already configured"
+        return 0
+    fi
+    
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log "Configuring i2c for RGB Control (OpenRGB)"
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # 1. Load i2c modules immediately
+    log "Loading i2c kernel modules..."
+    sudo modprobe i2c-dev 2>&1 | tee -a "$LOG" || warn "Failed to load i2c-dev"
+    sudo modprobe i2c-piix4 2>&1 | tee -a "$LOG" || warn "Failed to load i2c-piix4"
+    
+    # 2. Configure modules to load at boot
+    log "Configuring i2c modules for autoload..."
+    
+    # Create i2c.conf if doesn't exist
+    if [ ! -f /etc/modules-load.d/i2c.conf ]; then
+        echo "i2c-dev" | sudo tee /etc/modules-load.d/i2c.conf > /dev/null
+        echo "i2c-piix4" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
+        log "✓ Created /etc/modules-load.d/i2c.conf"
+    else
+        # File exists, append if not already present
+        if ! grep -q "i2c-dev" /etc/modules-load.d/i2c.conf; then
+            echo "i2c-dev" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
+        fi
+        if ! grep -q "i2c-piix4" /etc/modules-load.d/i2c.conf; then
+            echo "i2c-piix4" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
+        fi
+        log "✓ Updated /etc/modules-load.d/i2c.conf"
+    fi
+    
+    # 3. Create i2c group if doesn't exist and add user
+    log "Configuring i2c group permissions..."
+    
+    if ! getent group i2c > /dev/null 2>&1; then
+        sudo groupadd i2c
+        log "✓ Created i2c group"
+    fi
+    
+    # Add user to i2c group
+    sudo usermod -aG i2c "$USER" 2>&1 | tee -a "$LOG"
+    sudo sensors-detect --auto
+
+    log "✓ Added $USER to i2c group"
+    
+    # 4. Create udev rules for i2c devices
+    log "Creating udev rules for i2c devices..."
+    
+    sudo tee /etc/udev/rules.d/99-i2c.rules > /dev/null <<'EOF'
+# i2c device permissions for OpenRGB and other RGB control software
+KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"
+SUBSYSTEM=="i2c-dev", GROUP="i2c", MODE="0660"
+EOF
+    
+    log "✓ Created /etc/udev/rules.d/99-i2c.rules"
+    
+    # 5. Reload udev rules
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+    log "✓ Reloaded udev rules"
+    
+    # 6. Verify i2c devices
+    
+    log "Verifying i2c devices..."
+    if find /dev -maxdepth 1 -type c -name 'i2c-*' | grep -q .; then
+        log "✓ i2c devices found:"
+        find /dev -maxdepth 1 -type c -name 'i2c-*' \
+            -printf "%M %u %g %s %TY-%Tm-%Td %TH:%TM %p\n" \
+            | sed 's/^/  /' | tee -a "$LOG"
+    else
+        warn "⚠ No i2c devices found (may appear after reboot)"
+    fi
+    
+    # 7. Check if modules are loaded
+    log "Checking loaded modules..."
+    if lsmod | grep -q i2c_dev; then
+        log "✓ i2c-dev module loaded"
+    else
+        warn "⚠ i2c-dev module not loaded"
+    fi
+    
+    if lsmod | grep -q i2c_piix4; then
+        log "✓ i2c-piix4 module loaded"
+    else
+        warn "⚠ i2c-piix4 module not loaded (normal for some systems)"
+    fi
+    
+    mark_completed "i2c_setup"
+    
+    echo ""
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log "✓ i2c CONFIGURATION COMPLETE!"
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log ""
+    log "OpenRGB can now access i2c devices for RGB control"
+    log "⚠️  REBOOT REQUIRED for group membership to take effect"
+    log ""
+}
+
 setup_gdm() {
     if [ "$(is_completed 'gdm')" = "yes" ]; then
         log "✓ GDM already installed"
@@ -917,6 +1169,7 @@ setup_directories() {
     mkdir -p "$HOME/.config/kitty"
     mkdir -p "$HOME/.config/xfce4"
     mkdir -p "$HOME/.config/gtk-3.0"
+    mkdir -p "/var/lib/AccountsService/users"
     
     # Wallpapers
     if [ ! -d "$HOME/Pictures/Wallpapers/.git" ]; then
@@ -1023,6 +1276,36 @@ setup_configs() {
     fi
 
     chmod 644 "$config_home/.face"
+
+    # Setup GDM avatar via AccountsService
+    local username="$USER"
+    local accountsservice_dir="/var/lib/AccountsService/users"
+    local accountsservice_file="$accountsservice_dir/$username"
+
+    if [ -f "$accountsservice_file" ]; then
+        # File đã tồn tại - kiểm tra và cập nhật
+        if sudo grep -q "^\[User\]" "$accountsservice_file"; then
+            # Có section [User]
+            if sudo grep -q "^Icon=" "$accountsservice_file"; then
+                # Đã có dòng Icon, thay thế
+                sudo sed -i "s|^Icon=.*|Icon=$HOME/.face|" "$accountsservice_file"
+            else
+                # Chưa có dòng Icon, thêm vào sau [User]
+                sudo sed -i "/^\[User\]/a Icon=$HOME/.face" "$accountsservice_file"
+            fi
+        else
+            # Không có section [User], thêm section mới
+            echo -e "\n[User]\nIcon=$HOME/.face" | sudo tee -a "$accountsservice_file" > /dev/null
+        fi
+    else
+        # File chưa tồn tại - tạo mới
+        sudo tee "$accountsservice_file" > /dev/null <<EOF
+[User]
+Icon=$HOME/.face
+EOF
+    fi
+    
+    chmod 644 "$accountsservice_file"
     
     # DNS configuration - modify existing values in resolved.conf
     log "Configuring system settings..."
@@ -1123,20 +1406,24 @@ main() {
     setup_nvidia_optimization
     setup_meta_packages
     setup_gaming
-    setup_development
     setup_multimedia
     setup_ai_ml
     setup_streaming
     setup_system_optimization
+    setup_i2c_for_rgb
     setup_gdm
     setup_directories
     setup_configs
     
     # Done
     echo ""
-    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║      ✓ INSTALLATION COMPLETED SUCCESSFULLY!                ║${NC}"
-    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${GREEN}"
+    cat << "EOF"
+╔════════════════════════════════════════════════════════════╗
+║           INSTALLATION COMPLETED SUCCESSFULLY!             ║
+╚════════════════════════════════════════════════════════════╝
+EOF
+    echo -e "${NC}"
     echo ""
     echo "Logs: $LOG"
     echo "Backup: $BACKUP_DIR"
