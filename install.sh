@@ -12,7 +12,7 @@ readonly NC='\e[0m'                    # Reset màu
 
 LOG_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-readonly LOG="$HOME/setup_complete_${LOG_TIMESTAMP}.log"
+readonly LOG="$HOME/Log/setup_complete_${LOG_TIMESTAMP}.log"
 readonly STATE_DIR="$HOME/.cache/caelestia-setup"
 readonly STATE_FILE="$STATE_DIR/setup_state.json"
 readonly BACKUP_DIR="$HOME/Documents/caelestia-configs-${BACKUP_TIMESTAMP}"
@@ -1204,26 +1204,82 @@ setup_configs() {
 	local configs_dir="$repo_dir/Configs"
 	local config_home="${XDG_CONFIG_HOME:-$HOME}"
 	
+	# Create a dedicated backup directory for configs
+	local BACKUP_ROOT="$HOME/.backup"
+	local CONFIGS_BACKUP_DIR="$BACKUP_ROOT/Configs.bak_$(date +%Y%m%d_%H%M%S)"
+	mkdir -p "$CONFIGS_BACKUP_DIR"
+	
 	# Check if Configs directory exists
 	if [ ! -d "$configs_dir" ]; then
 	    error "Configs directory not found at: $configs_dir"
 	fi
 	
-	# Function to confirm overwrite
+	# Function to confirm overwrite with centralized backup
 	confirm_overwrite() {
 	    local target_path="$1"
+	    local relative_path="${2:-}"  # Optional: relative path for logging
 	    
 	    if [ -e "$target_path" ] || [ -L "$target_path" ]; then
-	        local backup_name
-	        backup_name="$(basename "$target_path").bak_$(date +%Y%m%d_%H%M%S)"
-	        log "Backing up existing: $target_path → $backup_name"
-	        mv "$target_path" "${target_path}_${backup_name}" 2>/dev/null || {
-	            warn "Could not backup $target_path"
+	        # Calculate backup path preserving directory structure
+	        local backup_path="$CONFIGS_BACKUP_DIR/$relative_path"
+	        
+	        # Create parent directory in backup location
+	        mkdir -p "$(dirname "$backup_path")"
+	        
+	        # Backup with rsync to preserve everything
+	        if rsync -a "$target_path/" "$backup_path/" 2>/dev/null || \
+	           cp -r "$target_path" "$backup_path" 2>/dev/null || \
+	           cp "$target_path" "$backup_path" 2>/dev/null; then
+	            log "Backed up: $relative_path → $CONFIGS_BACKUP_DIR/$relative_path"
+	            # Remove the original
+	            rm -rf "$target_path" 2>/dev/null || true
+	            return 0
+	        else
+	            warn "Could not backup $relative_path"
 	            return 1
-	        }
+	        fi
 	    fi
 	    return 0
 	}
+	
+	# Sync ONLY top-level items (NOT recursive)
+	log "Syncing configuration items (top-level only, no recursion)..."
+	
+	# Method 1: Using find with -maxdepth 1 (simplest)
+	find "$configs_dir" -maxdepth 1 \( -name ".*" -o ! -name ".*" \) ! -name "." ! -name ".." -print0 | while IFS= read -r -d '' item; do
+	    # Calculate relative path
+	    local relative_path="${item#"$configs_dir"/}"
+	    local target_path="$config_home/$relative_path"
+	    
+	    # Skip broken symlinks
+	    [ -L "$item" ] && [ ! -e "$item" ] && continue
+	    
+	    log "Processing: $relative_path"
+	    
+	    if confirm_overwrite "$target_path" "$relative_path"; then
+	        mkdir -p "$(dirname "$target_path")"
+	        if ln -sf "$(realpath "$item")" "$target_path" 2>/dev/null; then
+	            log "  ✓ Linked: $relative_path → $target_path"
+	        else
+	            warn "  ✗ Failed to link: $relative_path"
+	        fi
+	    else
+	        warn "  ⊘ Skipped: $relative_path (backup failed)"
+	    fi
+	done
+	
+	# Log backup location
+	if [ -d "$CONFIGS_BACKUP_DIR" ] && [ "$(ls -A "$CONFIGS_BACKUP_DIR" 2>/dev/null)" ]; then
+	    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	    log "✓ BACKUP COMPLETE!"
+	    log "All original configs backed up to:"
+	    log "  $CONFIGS_BACKUP_DIR"
+	    log ""
+	    log "Structure preserved:"
+	    find "$CONFIGS_BACKUP_DIR" -type f | head -10 | sed 's|'"$CONFIGS_BACKUP_DIR"'/|    • |' | tee -a "$LOG"
+	    [ "$(find "$CONFIGS_BACKUP_DIR" -type f | wc -l)" -gt 10 ] && log "    ... and more"
+	    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	fi
 	
 	# Sync ONLY top-level items (NOT recursive)
 	log "Syncing configuration items (top-level only, no recursion)..."
