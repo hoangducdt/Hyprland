@@ -1204,108 +1204,109 @@ setup_configs() {
 	local configs_dir="$repo_dir/Configs"
 	local config_home="${XDG_CONFIG_HOME:-$HOME}"
 	
-	# Create a dedicated backup directory for configs
-	local BACKUP_ROOT="$HOME/.backup"
-	local CONFIGS_BACKUP_DIR="$BACKUP_ROOT/Configs.bak_$(date +%Y%m%d_%H%M%S)"
-	mkdir -p "$CONFIGS_BACKUP_DIR"
-	
 	# Check if Configs directory exists
 	if [ ! -d "$configs_dir" ]; then
 	    error "Configs directory not found at: $configs_dir"
 	fi
 	
-	# Function to confirm overwrite with centralized backup
-	confirm_overwrite() {
-	    local target_path="$1"
-	    local relative_path="${2:-}"  # Optional: relative path for logging
-	    
-	    if [ -e "$target_path" ] || [ -L "$target_path" ]; then
-	        # Calculate backup path preserving directory structure
-	        local backup_path="$CONFIGS_BACKUP_DIR/$relative_path"
-	        
-	        # Create parent directory in backup location
-	        mkdir -p "$(dirname "$backup_path")"
-	        
-	        # Backup with rsync to preserve everything
-	        if rsync -a "$target_path/" "$backup_path/" 2>/dev/null || \
-	           cp -r "$target_path" "$backup_path" 2>/dev/null || \
-	           cp "$target_path" "$backup_path" 2>/dev/null; then
-	            log "Backed up: $relative_path → $CONFIGS_BACKUP_DIR/$relative_path"
-	            # Remove the original
-	            rm -rf "$target_path" 2>/dev/null || true
-	            return 0
-	        else
-	            warn "Could not backup $relative_path"
-	            return 1
-	        fi
-	    fi
-	    return 0
-	}
+	# Tạo thư mục backup chỉ khi cần
+	local CONFIGS_BACKUP_DIR=""
+	local backup_items=()
 	
 	# Sync ONLY top-level items (NOT recursive)
-	log "Syncing configuration items (top-level only, no recursion)..."
+	log "Syncing configuration items..."
 	
-	# Method 1: Using find with -maxdepth 1 (simplest)
-	find "$configs_dir" -maxdepth 1 \( -name ".*" -o ! -name ".*" \) ! -name "." ! -name ".." -print0 | while IFS= read -r -d '' item; do
-	    # Calculate relative path
-	    local relative_path="${item#"$configs_dir"/}"
-	    local target_path="$config_home/$relative_path"
+	# Đầu tiên: kiểm tra những gì cần backup
+	while IFS= read -r item; do
+	    item_name=$(basename "$item")
+	    target_path="$config_home/$item_name"
 	    
-	    # Skip broken symlinks
-	    [ -L "$item" ] && [ ! -e "$item" ] && continue
-	    
-	    log "Processing: $relative_path"
-	    
-	    if confirm_overwrite "$target_path" "$relative_path"; then
-	        mkdir -p "$(dirname "$target_path")"
-	        if ln -sf "$(realpath "$item")" "$target_path" 2>/dev/null; then
-	            log "  ✓ Linked: $relative_path → $target_path"
-	        else
-	            warn "  ✗ Failed to link: $relative_path"
-	        fi
-	    else
-	        warn "  ⊘ Skipped: $relative_path (backup failed)"
+	    # Nếu target đã tồn tại và KHÔNG phải symlink trỏ đến đúng vị trí
+	    if [ -e "$target_path" ] && [ ! -L "$target_path" ]; then
+	        # Đây là file/directory thực tế của user, cần backup
+	        backup_items+=("$item_name")
+	    elif [ -L "$target_path" ] && [ "$(readlink -f "$target_path")" != "$(realpath "$item")" ]; then
+	        # Đây là symlink sai, cần backup
+	        backup_items+=("$item_name")
 	    fi
-	done
+	done < <(find "$configs_dir" -maxdepth 1 \( -name ".*" -o ! -name ".*" \) ! -name "." ! -name ".." ! -path "$configs_dir" -print0 | tr '\0' '\n')
 	
-	# Log backup location
-	if [ -d "$CONFIGS_BACKUP_DIR" ] && [ "$(ls -A "$CONFIGS_BACKUP_DIR" 2>/dev/null)" ]; then
-	    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-	    log "✓ BACKUP COMPLETE!"
-	    log "All original configs backed up to:"
-	    log "  $CONFIGS_BACKUP_DIR"
-	    log ""
-	    log "Structure preserved:"
-	    find "$CONFIGS_BACKUP_DIR" -type f | head -10 | sed 's|'"$CONFIGS_BACKUP_DIR"'/|    • |' | tee -a "$LOG"
-	    [ "$(find "$CONFIGS_BACKUP_DIR" -type f | wc -l)" -gt 10 ] && log "    ... and more"
-	    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	# Nếu có items cần backup, tạo thư mục backup
+	if [ ${#backup_items[@]} -gt 0 ]; then
+	    CONFIGS_BACKUP_DIR="$HOME/.backup/Configs.bak_$(date +%Y%m%d_%H%M%S)"
+	    mkdir -p "$CONFIGS_BACKUP_DIR"
+	    log "Creating backup for ${#backup_items[@]} items: ${backup_items[*]}"
 	fi
 	
-	# Sync ONLY top-level items (NOT recursive)
-	log "Syncing configuration items (top-level only, no recursion)..."
-	
-	# Method 1: Using find with -maxdepth 1 (simplest)
-	find "$configs_dir" -maxdepth 1 \( -name ".*" -o ! -name ".*" \) ! -name "." ! -name ".." -print0 | while IFS= read -r -d '' item; do
-	    # Calculate relative path
-	    local relative_path="${item#"$configs_dir"/}"
-	    local target_path="$config_home/$relative_path"
+	# Thực hiện sync
+	find "$configs_dir" -maxdepth 1 \( -name ".*" -o ! -name ".*" \) ! -name "." ! -name ".." ! -path "$configs_dir" -print0 | while IFS= read -r -d '' item; do
+	    local item_name
+	    item_name=$(basename "$item")
+	    local target_path="$config_home/$item_name"
 	    
-	    # Skip broken symlinks
-	    [ -L "$item" ] && [ ! -e "$item" ] && continue
+	    log "Processing: $item_name"
 	    
-	    log "Processing: $relative_path"
+	    # Kiểm tra xem có cần backup không
+	    local need_backup=false
+	    if [[ " ${backup_items[*]} " == *" $item_name "* ]]; then
+	        need_backup=true
+	    fi
 	    
-	    if confirm_overwrite "$target_path"; then
-	        mkdir -p "$(dirname "$target_path")"
-	        if ln -sf "$(realpath "$item")" "$target_path" 2>/dev/null; then
-	            log "  ✓ Linked: $relative_path → $target_path"
+	    # Nếu cần backup
+	    if [ "$need_backup" = true ] && [ -n "$CONFIGS_BACKUP_DIR" ]; then
+	        local backup_path="$CONFIGS_BACKUP_DIR/$item_name"
+	        
+	        if [ -d "$target_path" ]; then
+	            if cp -r "$target_path" "$backup_path" 2>/dev/null; then
+	                log "  ✓ Backed up directory: $item_name"
+	                rm -rf "$target_path" 2>/dev/null
+	            else
+	                warn "  ⊘ Could not backup directory: $item_name"
+	                continue
+	            fi
 	        else
-	            warn "  ✗ Failed to link: $relative_path"
+	            mkdir -p "$(dirname "$backup_path")"
+	            if cp -r "$target_path" "$backup_path" 2>/dev/null; then
+	                log "  ✓ Backed up file: $item_name"
+	                rm -f "$target_path" 2>/dev/null
+	            else
+	                warn "  ⊘ Could not backup file: $item_name"
+	                continue
+	            fi
 	        fi
+	    elif [ -e "$target_path" ] || [ -L "$target_path" ]; then
+	        # Không cần backup nhưng tồn tại -> xóa để tạo symlink mới
+	        rm -rf "$target_path" 2>/dev/null || warn "  ⚠ Could not remove: $item_name"
+	    fi
+	    
+	    # Tạo symlink mới
+	    mkdir -p "$(dirname "$target_path")"
+	    if ln -sf "$(realpath "$item")" "$target_path" 2>/dev/null; then
+	        log "  ✓ Linked: $item_name → $target_path"
 	    else
-	        warn "  ⊘ Skipped: $relative_path (backup failed)"
+	        warn "  ✗ Failed to link: $item_name"
 	    fi
 	done
+	
+	# Hiển thị backup summary nếu có backup
+	if [ -n "$CONFIGS_BACKUP_DIR" ] && [ -d "$CONFIGS_BACKUP_DIR" ]; then
+	    local backup_count=0
+	    backup_count=$(find "$CONFIGS_BACKUP_DIR" 2>/dev/null | wc -l)
+	    
+	    if [ "$backup_count" -gt 1 ]; then  # >1 vì có chính thư mục
+	        log ""
+	        log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	        log "✓ SAFETY BACKUP CREATED!"
+	        log "  Location: $CONFIGS_BACKUP_DIR"
+	        log "  Items backed up: ${#backup_items[@]}"
+	        log "  List: ${backup_items[*]}"
+	        log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	        warn "⚠ User configuration files have been backed up!"
+	    else
+	        # Xóa thư mục backup rỗng
+	        rmdir "$CONFIGS_BACKUP_DIR" 2>/dev/null || true
+	    fi
+	fi
     
     # Special handling for specific configs
     log "Applying special configurations..."
