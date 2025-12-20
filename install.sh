@@ -1227,8 +1227,7 @@ setup_configs() {
 	# Sync EVERYTHING recursively using find
 	log "Syncing ALL configuration items recursively..."
 	find "$configs_dir" -mindepth 1 -print0 | while IFS= read -r -d '' item; do
-	    # Calculate relative path
-	    local relative_path="${item#$configs_dir/}"
+	    local relative_path="${item#"$configs_dir/"}"
 	    local target_path="$config_home/$relative_path"
 	    
 	    # Skip broken symlinks
