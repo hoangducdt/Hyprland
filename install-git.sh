@@ -566,6 +566,7 @@ setup_meta_packages() {
 		## 7.1 Container Platform
 		"docker-desktop"                # Docker Desktop - Bao gồm docker + compose
 										# ⚠️ KHÔNG cài riêng "docker" và "docker-compose"
+        "nvidia-container-toolkit"                                
 		
 		## 7.2 Databases
 		"postgresql"                    # PostgreSQL database
@@ -742,7 +743,10 @@ setup_meta_packages() {
 		
 		## 16.1 Themes
 		"adw-gtk-theme"                 # Adwaita GTK theme
-		"papirus-icon-theme"            # Papirus icon theme
+		#"papirus-icon-theme"            # Papirus icon theme
+		#"tela-circle-icon-theme-git"    # Tela Circle icon theme
+		#"whitesur-icon-theme-git"       # WhiteSur (Phong cách macOS)
+		"numix-circle-icon-theme-git"   # Numix Circle icon theme
 		"qt5ct-kde"                     # Qt5 configuration tool
 		"qt6ct-kde"                     # Qt6 configuration tool
 		
