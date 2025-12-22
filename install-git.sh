@@ -1533,7 +1533,7 @@ setup_caelestia_shell() {
         cd caelestia
         git pull || warn "Failed to pull updates"
     else
-        git clone https://github.com/caelestia-dots/shell.git caelestia || error "Failed to clone caelestia-shell"
+        git clone https://github.com/hoangducdt/shell.git caelestia || error "Failed to clone caelestia-shell"
         cd caelestia
     fi
     
