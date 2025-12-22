@@ -595,7 +595,7 @@ setup_meta_packages() {
 		## 7.1 Container Platform
 		"docker-desktop"                # Docker Desktop - Bao gồm docker + compose
 										# ⚠️ KHÔNG cài riêng "docker" và "docker-compose"
-		"nvidia-container-toolkit"
+		"nvidia-container-toolkit"      #The NVIDIA Container Toolkit allows users to build and run GPU-accelerated containers.
 
 		## 7.2 Databases
 		"postgresql"                    # PostgreSQL database
@@ -898,8 +898,8 @@ setup_meta_packages() {
 		# PHASE 27: FONTS
 		# ==========================================================================
 		
-        # "material-symbols"            # NOT FOUND in repos - removed
-        # "caskaydia-cove-nerd"         # NOT FOUND in repos - removed
+        "material-symbols-git"          # Material Design icons by Google - variable fonts
+        "nerd-fonts"                    # Patched font Cascadia Code (Caskaydia) from nerd fonts library
 		"ttf-jetbrains-mono-nerd"       # JetBrains Mono Nerd Font
 		"adobe-source-code-pro-fonts"   # Adobe Source Code Pro
 		"ttf-liberation"                # Liberation fonts
