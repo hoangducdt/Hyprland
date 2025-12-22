@@ -1195,7 +1195,8 @@ setup_ai_ml() {
     sudo tee /etc/systemd/system/ollama.service > /dev/null <<OLLAMA_SERVICE
 [Unit]
 Description=Ollama Service
-After=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
 
 [Service]
 ExecStart=/usr/bin/ollama serve
