@@ -1540,11 +1540,11 @@ main() {
     # Done
     echo ""
     echo -e "${GREEN}"
-    cat << "EOF"
+    cat << "COMPLETE"
 ╔════════════════════════════════════════════════════════════╗
 ║           INSTALLATION COMPLETED SUCCESSFULLY!             ║
 ╚════════════════════════════════════════════════════════════╝
-EOF
+COMPLETE
     echo -e "${NC}"
     echo ""
     echo "Logs: $LOG"
