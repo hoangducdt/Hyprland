@@ -461,6 +461,7 @@ setup_meta_packages() {
 		"p7zip"                         # 7-Zip compression
 		"unrar"                         # RAR extraction
         "ark"                           # KDE archive manager - GUI for all formats
+		"thunar-archive-plugin"			#The Thunar Archive Plugin allows you to create and extract archive files using the file context menus in the Thunar file manager.
 		
 		## 1.4 File System Support
 		"btrfs-progs"                   # Btrfs file system utilities
@@ -901,8 +902,9 @@ setup_meta_packages() {
 		# PHASE 27: FONTS
 		# ==========================================================================
 		
-        "material-symbols-git"          # Material Design icons by Google - variable fonts
-        "nerd-fonts"                    # Patched font Cascadia Code (Caskaydia) from nerd fonts library
+        "ttf-material-symbols-variable" # Material Design icons by Google - variable fonts
+        "ttf-cascadia-code-nerd"        # Patched font Cascadia Code (Caskaydia) from nerd fonts library
+		"ttf-rubik-vf"          		# A sans serif font family with slightly rounded corners: variable font version
 		"ttf-jetbrains-mono-nerd"       # JetBrains Mono Nerd Font
 		"adobe-source-code-pro-fonts"   # Adobe Source Code Pro
 		"ttf-liberation"                # Liberation fonts
