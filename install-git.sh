@@ -966,6 +966,184 @@ setup_multimedia() {
     log "✓ Multimedia installed"
 }
 
+setup_docker() {
+    if [ "$(is_completed 'docker')" = "yes" ]; then
+        log "✓ Docker already configured"
+        return 0
+    fi
+    
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log "DOCKER SETUP & AUTO-START"
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    log "Checking Docker installation..."
+    
+    # Kiểm tra Docker đã cài đặt chưa
+    if ! command -v docker &>/dev/null; then
+        error "Docker not found! Please install Docker first."
+    fi
+    
+    if ! command -v docker-compose &>/dev/null; then
+        error "Docker Compose not found! Please install Docker Compose first."
+    fi
+    
+    log "✓ Docker found: $(docker --version)"
+    log "✓ Docker Compose found: $(docker-compose --version)"
+    
+    # ========================================
+    # CONFIGURE DOCKER AUTO-START
+    # ========================================
+    
+    log "Configuring Docker auto-start..."
+    
+    # 1. Enable Docker service
+    sudo systemctl enable docker.service 2>&1 | tee -a "$LOG" || warn "Failed to enable docker.service"
+    sudo systemctl enable docker.socket 2>&1 | tee -a "$LOG" || warn "Failed to enable docker.socket"
+    
+    # 2. Start Docker service immediately
+    sudo systemctl start docker.service 2>&1 | tee -a "$LOG" || warn "Failed to start docker.service"
+    sudo systemctl start docker.socket 2>&1 | tee -a "$LOG" || warn "Failed to start docker.socket"
+    
+    log "✓ Docker service enabled and started"
+    
+    # ========================================
+    # CONFIGURE USER PERMISSIONS
+    # ========================================
+    
+    log "Configuring user permissions for Docker..."
+    
+    # 3. Add user to docker group
+    if ! getent group docker > /dev/null 2>&1; then
+        sudo groupadd docker
+        log "✓ Created docker group"
+    fi
+    
+    # Add user to docker group
+    sudo usermod -aG docker "$USER" 2>&1 | tee -a "$LOG"
+    log "✓ Added $USER to docker group"
+    
+    # ========================================
+    # CONFIGURE NVIDIA CONTAINER TOOLKIT
+    # ========================================
+    
+    log "Configuring NVIDIA Container Toolkit..."
+    
+    # 4. Configure NVIDIA container runtime
+    if command -v nvidia-ctk &>/dev/null; then
+        sudo nvidia-ctk runtime configure --runtime=docker 2>&1 | tee -a "$LOG" || warn "Failed to configure NVIDIA runtime"
+        
+        # Restart Docker to apply NVIDIA runtime
+        sudo systemctl restart docker 2>&1 | tee -a "$LOG" || warn "Failed to restart docker"
+        log "✓ NVIDIA Container Toolkit configured"
+    else
+        warn "⚠ NVIDIA Container Toolkit not found, skipping NVIDIA GPU support"
+    fi
+    
+    # ========================================
+    # TEST DOCKER INSTALLATION
+    # ========================================
+    
+    log "Testing Docker installation..."
+    
+    # 5. Test Docker without sudo
+    sleep 2  # Give time for group changes
+    
+    # Create a simple test container
+    if docker run --rm hello-world 2>&1 | tee -a "$LOG" | grep -q "Hello from Docker"; then
+        log "✓ Docker test successful (hello-world)"
+    else
+        warn "⚠ Docker test failed - you may need to log out and log back in"
+    fi
+    
+    # 6. Test NVIDIA container support
+    if command -v nvidia-smi &>/dev/null; then
+        log "Testing NVIDIA GPU in containers..."
+        if docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi 2>&1 | tee -a "$LOG" | grep -q "NVIDIA-SMI"; then
+            log "✓ NVIDIA GPU container support working"
+        else
+            warn "⚠ NVIDIA GPU container support may not be working"
+        fi
+    fi
+    
+    # ========================================
+    # CONFIGURE DOCKER AUTOSTART ON BOOT
+    # ========================================
+    
+    log "Configuring Docker daemon settings..."
+    
+    # 7. Create/update Docker daemon.json
+    local docker_daemon_config="/etc/docker/daemon.json"
+    backup_file "$docker_daemon_config"
+    
+    sudo tee "$docker_daemon_config" > /dev/null <<'DOCKER_DAEMON'
+{
+    "exec-opts": ["native.cgroupdriver=systemd"],
+    "log-driver": "json-file",
+    "log-opts": {
+        "max-size": "100m"
+    },
+    "storage-driver": "overlay2",
+    "default-runtime": "nvidia",
+    "runtimes": {
+        "nvidia": {
+            "path": "/usr/bin/nvidia-container-runtime",
+            "runtimeArgs": []
+        }
+    }
+}
+DOCKER_DAEMON
+    
+    sudo chmod 644 "$docker_daemon_config"
+    log "✓ Docker daemon configuration updated"
+    
+    # 8. Restart Docker to apply new configuration
+    sudo systemctl restart docker 2>&1 | tee -a "$LOG" || warn "Failed to restart docker"
+    
+    # ========================================
+    # CREATE DOCKER VOLUME DIRECTORIES
+    # ========================================
+    
+    log "Creating Docker volume directories..."
+    
+    # 9. Create common Docker directories
+    local docker_dirs=(
+        "$HOME/docker"
+        "$HOME/docker/compose"
+        "$HOME/docker/volumes"
+        "$HOME/docker/volumes/postgres"
+        "$HOME/docker/volumes/redis"
+        "$HOME/docker/volumes/mysql"
+    )
+    
+    for dir in "${docker_dirs[@]}"; do
+        mkdir -p "$dir"
+        log "  ✓ Created: $dir"
+    done
+    
+    # ========================================
+    # SETUP COMPLETION
+    # ========================================
+    
+    mark_completed "docker"
+    
+    echo ""
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log "✓ DOCKER SETUP COMPLETE!"
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log ""
+    log "Docker is now configured to start automatically on boot"
+    log "User '$USER' has been added to docker group"
+    log ""
+    log "IMPORTANT: You need to LOG OUT and LOG BACK IN for"
+    log "           group permissions to take effect!"
+    log ""
+    log "After logging back in, test with:"
+    log "  docker run --rm hello-world"
+    log "  docker run --gpus all nvidia/cuda:11.0-base nvidia-smi"
+    log ""
+    warn "⚠️  LOG OUT REQUIRED for docker group membership"
+}
+
 setup_ai_ml() {
     if [ "$(is_completed 'ai_ml')" = "yes" ]; then
         log "✓ AI/ML already installed"
@@ -1662,6 +1840,7 @@ main() {
     setup_system_update
     setup_nvidia_optimization
     setup_meta_packages
+    setup_docker
     setup_gaming
     setup_multimedia
     setup_ai_ml
