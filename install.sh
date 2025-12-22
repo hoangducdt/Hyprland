@@ -146,6 +146,35 @@ EOF
 
 # ===== PACKAGE MANAGEMENT =====
 
+handle_conflicts() {
+    log "Checking and removing conflicting packages..."
+    
+    # Conflict 1: pipewire-jack vs jack2
+    # Giữ pipewire-jack (modern replacement), remove jack2
+    if pacman -Qi jack2 &>/dev/null; then
+        log "Removing jack2 (conflicts with pipewire-jack)..."
+        sudo pacman -Rdd --noconfirm jack2 2>&1 | tee -a "$LOG" || warn "Failed to remove jack2"
+    fi
+    
+    # Conflict 2: rust vs rustup  
+    # Giữ rustup (better for development), remove rust
+    if pacman -Qi rustup &>/dev/null; then
+        if pacman -Qi rust &>/dev/null; then
+            log "Removing rust (conflicts with rustup)..."
+            sudo pacman -Rdd --noconfirm rust 2>&1 | tee -a "$LOG" || warn "Failed to remove rust"
+        fi
+    fi
+    
+    # Conflict 3: obs-studio-browser vs obs-studio
+    # Giữ obs-studio (base package), remove obs-studio-browser
+    if pacman -Qi obs-studio-browser &>/dev/null; then
+        log "Removing obs-studio-browser (conflicts with obs-studio)..."
+        sudo pacman -Rdd --noconfirm obs-studio-browser 2>&1 | tee -a "$LOG" || warn "Failed to remove obs-studio-browser"
+    fi
+    
+    log "✓ Conflict check completed"
+}
+
 install_helper(){
     local helper_pkgs=(
         "base-devel"
@@ -464,7 +493,7 @@ setup_meta_packages() {
 		"pipewire"                      # Core audio/video server
 		"pipewire-pulse"                # PulseAudio replacement
 		"pipewire-alsa"                 # ALSA support
-		"pipewire-jack"                 # JACK audio support - Cho audio production
+		"pipewire-jack"                 # JACK audio support - Thay thế jack2 (conflicts: jack2)
 		"wireplumber"                   # Session manager for PipeWire
 		
 		## 3.2 Audio Tools
@@ -524,7 +553,7 @@ setup_meta_packages() {
 		## 5.4 Programming Languages
 		"nodejs"                        # Node.js runtime
 		"npm"                           # Node package manager
-		"rust"                          # Rust language
+		# "rust"                        # Rust language - REMOVED: conflicts with rustup
 		"go"                            # Go language
 		
 		## 5.5 Python Development
@@ -684,7 +713,7 @@ setup_meta_packages() {
 		"obs-vaapi"                     # VA-API plugin for OBS
 		"obs-nvfbc"                     # NVIDIA capture plugin
 		"obs-vkcapture"                 # Vulkan capture plugin
-		"obs-websocket"                 # WebSocket plugin for OBS
+		# "obs-websocket"               # WebSocket plugin - REMOVED: installs obs-studio-browser which conflicts with obs-studio
 		
 		# ==========================================================================
 		# PHASE 13: PUBLISHING & DOCUMENT TOOLS
@@ -869,8 +898,8 @@ setup_meta_packages() {
 		# PHASE 27: FONTS
 		# ==========================================================================
 		
-        "material-symbols"
-        "caskaydia-cove-nerd"
+        # "material-symbols"            # NOT FOUND in repos - removed
+        # "caskaydia-cove-nerd"         # NOT FOUND in repos - removed
 		"ttf-jetbrains-mono-nerd"       # JetBrains Mono Nerd Font
 		"adobe-source-code-pro-fonts"   # Adobe Source Code Pro
 		"ttf-liberation"                # Liberation fonts
@@ -1166,6 +1195,8 @@ setup_directories() {
     mkdir -p "$HOME/.config/VSCodium/User"
     mkdir -p "$HOME/.config/xfce4"
     mkdir -p "$HOME/.config/gtk-3.0"
+    mkdir -p "$HOME/.config/qt5ct
+    mkdir -p "$HOME/.config/qt6ct"
     
     mkdir -p "/var/lib/AccountsService/users"
     
@@ -1175,16 +1206,6 @@ setup_directories() {
             "$HOME/Pictures/Wallpapers" 2>&1 | tee -a "$LOG" || warn "Wallpapers clone failed"
     fi
     
-    # Thêm bookmarks
-    cat >> "$HOME/.config/gtk-3.0/bookmarks" <<EOF
-file://$HOME/Downloads
-file://$HOME/Documents
-file://$HOME/Pictures
-file://$HOME/Videos
-file://$HOME/Music
-file://$HOME/OneDrive
-EOF
-
     mark_completed "directories"
     log "✓ Directories created"
 }
@@ -1478,6 +1499,16 @@ STATIC_IP
     else
         warn "Could not detect primary network interface for static IP configuration"
     fi
+
+    # Thêm bookmarks
+    cat >> "$HOME/.config/gtk-3.0/bookmarks" <<EOF
+file://$HOME/Downloads
+file://$HOME/Documents
+file://$HOME/Pictures
+file://$HOME/Videos
+file://$HOME/Music
+file://$HOME/OneDrive
+EOF
     
     mark_completed "configs"
     log "✓ All configurations installed successfully"
@@ -1489,6 +1520,7 @@ STATIC_IP
 main() {
     show_banner
     init_state
+    handle_conflicts    # Xử lý conflicts trước
     install_helper
     clone_repo
     # Execute all setup functions
