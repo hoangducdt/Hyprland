@@ -462,6 +462,7 @@ setup_meta_packages() {
 		"p7zip"                         # 7-Zip compression
 		"unrar"                         # RAR extraction
         "ark"                           # KDE archive manager - GUI for all formats
+		"thunar-archive-plugin"			#The Thunar Archive Plugin allows you to create and extract archive files using the file context menus in the Thunar file manager.
 		
 		## 1.4 File System Support
 		"btrfs-progs"                   # Btrfs file system utilities
