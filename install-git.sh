@@ -1746,7 +1746,7 @@ main() {
     setup_multimedia
     setup_ai_ml
     setup_streaming
-    setup_system_optimization
+    #setup_system_optimization
     setup_gdm
     setup_directories
     setup_configs
