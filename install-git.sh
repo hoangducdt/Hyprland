@@ -450,7 +450,6 @@ setup_meta_packages() {
 		"rsync"                         # File synchronization
 		"tmux"                          # Terminal multiplexer
 		"jq"                            # JSON processor - Dependency của scripts
-        #"i2c-tools"                     # I2C/SMBus utilities for sensors/RGB
         "dmidecode"                     # Hardware information decoder
         "fwupd"                         # Firmware update manager
         "libnotify"
@@ -787,12 +786,13 @@ setup_meta_packages() {
 		
 		## 16.1 Themes
 		"adw-gtk-theme"                 # Adwaita GTK theme
-		#"papirus-icon-theme"            # Papirus-Dark | Papirus icon theme
-		#"tela-circle-icon-theme-git"    # Tela Circle icon theme
-		#"whitesur-icon-theme-git"       # WhiteSur (Phong cách macOS)
+		"papirus-icon-theme"            # Papirus-Dark | Papirus icon theme
+		"tela-circle-icon-theme-git"    # Tela Circle icon theme
+		"whitesur-icon-theme-git"       # WhiteSur (Phong cách macOS)
 		"numix-circle-icon-theme-git"   # Numix-Circle | Numix Circle icon theme
 		"qt5ct-kde"                     # Qt5 configuration tool
 		"qt6ct-kde"                     # Qt6 configuration tool
+        "nwg-look"
 		
 		## 16.2 Authentication
 		"gnome-keyring"                 # Password manager
@@ -840,14 +840,14 @@ setup_meta_packages() {
         "lm-sensors"                    # Hardware monitoring sensors
         "zenmonitor"                    # AMD Ryzen monitor GUI
         "corectrl"                      # AMD GPU/CPU control center
-		"amdgpu_top"                    # AMD GPU monitor
+		#"amdgpu_top"                    # AMD GPU monitor
 		"iotop"                         # I/O monitor
 		"iftop"                         # Network monitor
 		
 		## 19.2 Power Management
-		"irqbalance"                    # IRQ load balancing
+		#"irqbalance"                    # IRQ load balancing
 		"cpupower"                      # CPU frequency scaling
-		"thermald"                      # Thermal management
+		#"thermald"                      # Thermal management
 		"tlp"                           # Power management
 		"powertop"                      # Power consumption analyzer
         "ryzenadj"                      # Ryzen power adjustment
@@ -1318,108 +1318,6 @@ EOF
     log "✓ System optimization completed"
 }
 
-setup_i2c_for_rgb() {
-    if [ "$(is_completed 'i2c_setup')" = "yes" ]; then
-        log "✓ i2c already configured"
-        return 0
-    fi
-    
-    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log "Configuring i2c for RGB Control (OpenRGB)"
-    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    
-    # 1. Load i2c modules immediately
-    log "Loading i2c kernel modules..."
-    sudo modprobe i2c-dev 2>&1 | tee -a "$LOG" || warn "Failed to load i2c-dev"
-    sudo modprobe i2c-piix4 2>&1 | tee -a "$LOG" || warn "Failed to load i2c-piix4"
-    
-    # 2. Configure modules to load at boot
-    log "Configuring i2c modules for autoload..."
-    
-    # Create i2c.conf if doesn't exist
-    if [ ! -f /etc/modules-load.d/i2c.conf ]; then
-        echo "i2c-dev" | sudo tee /etc/modules-load.d/i2c.conf > /dev/null
-        echo "i2c-piix4" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
-        log "✓ Created /etc/modules-load.d/i2c.conf"
-    else
-        # File exists, append if not already present
-        if ! grep -q "i2c-dev" /etc/modules-load.d/i2c.conf; then
-            echo "i2c-dev" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
-        fi
-        if ! grep -q "i2c-piix4" /etc/modules-load.d/i2c.conf; then
-            echo "i2c-piix4" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
-        fi
-        log "✓ Updated /etc/modules-load.d/i2c.conf"
-    fi
-    
-    # 3. Create i2c group if doesn't exist and add user
-    log "Configuring i2c group permissions..."
-    
-    if ! getent group i2c > /dev/null 2>&1; then
-        sudo groupadd i2c
-        log "✓ Created i2c group"
-    fi
-    
-    # Add user to i2c group
-    sudo usermod -aG i2c "$USER" 2>&1 | tee -a "$LOG"
-    sudo sensors-detect --auto
-
-    log "✓ Added $USER to i2c group"
-    
-    # 4. Create udev rules for i2c devices
-    log "Creating udev rules for i2c devices..."
-    
-    sudo tee /etc/udev/rules.d/99-i2c.rules > /dev/null <<'EOF'
-# i2c device permissions for OpenRGB and other RGB control software
-KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"
-SUBSYSTEM=="i2c-dev", GROUP="i2c", MODE="0660"
-EOF
-    
-    log "✓ Created /etc/udev/rules.d/99-i2c.rules"
-    
-    # 5. Reload udev rules
-    sudo udevadm control --reload-rules
-    sudo udevadm trigger
-    log "✓ Reloaded udev rules"
-    
-    # 6. Verify i2c devices
-    
-    log "Verifying i2c devices..."
-    if find /dev -maxdepth 1 -type c -name 'i2c-*' | grep -q .; then
-        log "✓ i2c devices found:"
-        find /dev -maxdepth 1 -type c -name 'i2c-*' \
-            -printf "%M %u %g %s %TY-%Tm-%Td %TH:%TM %p\n" \
-            | sed 's/^/  /' | tee -a "$LOG"
-    else
-        warn "⚠ No i2c devices found (may appear after reboot)"
-    fi
-    
-    # 7. Check if modules are loaded
-    log "Checking loaded modules..."
-    if lsmod | grep -q i2c_dev; then
-        log "✓ i2c-dev module loaded"
-    else
-        warn "⚠ i2c-dev module not loaded"
-    fi
-    
-    if lsmod | grep -q i2c_piix4; then
-        log "✓ i2c-piix4 module loaded"
-    else
-        warn "⚠ i2c-piix4 module not loaded (normal for some systems)"
-    fi
-    
-    mark_completed "i2c_setup"
-    
-    echo ""
-    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log "✓ i2c CONFIGURATION COMPLETE!"
-    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    log ""
-    log "OpenRGB can now access i2c devices for RGB control"
-    log "⚠️  REBOOT REQUIRED for group membership to take effect"
-    log ""
-}
-
 setup_gdm() {
     if [ "$(is_completed 'gdm')" = "yes" ]; then
         log "✓ GDM already installed"
@@ -1844,12 +1742,11 @@ main() {
     setup_nvidia_optimization
     setup_meta_packages
     setup_docker
-    setup_gaming
+    #setup_gaming
     setup_multimedia
     setup_ai_ml
     setup_streaming
     setup_system_optimization
-    #setup_i2c_for_rgb
     setup_gdm
     setup_directories
     setup_configs
