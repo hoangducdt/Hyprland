@@ -156,22 +156,6 @@ handle_conflicts() {
         sudo pacman -Rdd --noconfirm jack2 2>&1 | tee -a "$LOG" || warn "Failed to remove jack2"
     fi
     
-    # Conflict 2: rust vs rustup  
-    # Giữ rustup (better for development), remove rust
-    if pacman -Qi rustup &>/dev/null; then
-        if pacman -Qi rust &>/dev/null; then
-            log "Removing rust (conflicts with rustup)..."
-            sudo pacman -Rdd --noconfirm rust 2>&1 | tee -a "$LOG" || warn "Failed to remove rust"
-        fi
-    fi
-    
-    # Conflict 3: obs-studio-browser vs obs-studio
-    # Giữ obs-studio (base package), remove obs-studio-browser
-    if pacman -Qi obs-studio-browser &>/dev/null; then
-        log "Removing obs-studio-browser (conflicts with obs-studio)..."
-        sudo pacman -Rdd --noconfirm obs-studio-browser 2>&1 | tee -a "$LOG" || warn "Failed to remove obs-studio-browser"
-    fi
-    
     log "✓ Conflict check completed"
 }
 
@@ -556,7 +540,7 @@ setup_meta_packages() {
 		## 5.4 Programming Languages
 		"nodejs"                        # Node.js runtime
 		"npm"                           # Node package manager
-		# "rust"                        # Rust language - REMOVED: conflicts with rustup
+		"rustup"                        # Rust language
 		"go"                            # Go language
 		
 		## 5.5 Python Development
@@ -721,7 +705,7 @@ setup_meta_packages() {
 		"obs-vaapi"                     # VA-API plugin for OBS
 		"obs-nvfbc"                     # NVIDIA capture plugin
 		"obs-vkcapture"                 # Vulkan capture plugin
-		# "obs-websocket"               # WebSocket plugin - REMOVED: installs obs-studio-browser which conflicts with obs-studio
+		#"obs-websocket"               # WebSocket plugin - REMOVED: installs obs-studio-browser which conflicts with obs-studio
 		
 		# ==========================================================================
 		# PHASE 13: PUBLISHING & DOCUMENT TOOLS
@@ -840,14 +824,13 @@ setup_meta_packages() {
         "lm-sensors"                    # Hardware monitoring sensors
         "zenmonitor"                    # AMD Ryzen monitor GUI
         "corectrl"                      # AMD GPU/CPU control center
-		#"amdgpu_top"                    # AMD GPU monitor
 		"iotop"                         # I/O monitor
 		"iftop"                         # Network monitor
 		
 		## 19.2 Power Management
-		#"irqbalance"                    # IRQ load balancing
+		"irqbalance"                    # IRQ load balancing
 		"cpupower"                      # CPU frequency scaling
-		#"thermald"                      # Thermal management
+		"thermald"                      # Thermal management
 		"tlp"                           # Power management
 		"powertop"                      # Power consumption analyzer
         "ryzenadj"                      # Ryzen power adjustment
@@ -1742,11 +1725,11 @@ main() {
     setup_nvidia_optimization
     setup_meta_packages
     setup_docker
-    #setup_gaming
+    setup_gaming
     setup_multimedia
     setup_ai_ml
     setup_streaming
-    #setup_system_optimization
+    setup_system_optimization
     setup_gdm
     setup_directories
     setup_configs
