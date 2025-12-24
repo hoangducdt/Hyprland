@@ -632,6 +632,9 @@ setup_meta_packages() {
 		
 		## 9.3 Gaming Utilities
 		"protonup-qt"                   # Proton-GE version manager GUI
+
+		## 9. Gaming Tools
+		"asf"                   		# ArchiSteamFarm is a tool for automatically farming Steam trading cards on multiple accounts simultaneously.
 		
 		# ==========================================================================
 		# PHASE 10: 3D CREATION & BLENDER ECOSYSTEM
@@ -931,6 +934,17 @@ setup_gaming() {
     fi
 	# Configure gamemode
     sudo usermod -aG gamemode "$USER"
+
+	sudo chown -R $USER:$USER /usr/lib/asf/
+
+	cd /usr/lib/asf
+	sudo git clone https://github.com/JustArchiNET/ASF-ui.git temp-ui
+	cd temp-ui
+	sudo npm install
+	sudo npm run build
+	cd ..
+	sudo cp -r temp-ui/dist/* www/
+	sudo rm -rf temp-ui
 
     mark_completed "gaming"
     log "✓ Gaming setup completed"
@@ -1299,6 +1313,20 @@ EOF
     
     mark_completed "system_optimization"
     log "✓ System optimization completed"
+}
+
+setup_dev() {
+    if [ "$(is_completed 'dev')" = "yes" ]; then
+        log "✓ Dev tools already installed"
+        return 0
+    fi
+    
+    log "Installing Dev tools..."
+	
+    dotnet new install "Avalonia.Templates"
+    
+    mark_completed "dev"
+    log "✓ Dev tools installed"
 }
 
 setup_gdm() {
@@ -1730,6 +1758,7 @@ main() {
     setup_ai_ml
     setup_streaming
     setup_system_optimization
+	setup_dev()
     setup_gdm
     setup_directories
     setup_configs
