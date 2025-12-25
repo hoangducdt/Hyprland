@@ -13,9 +13,9 @@ readonly NC='\e[0m'                    # Reset màu
 LOG_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 readonly LOG="$HOME/setup_complete_${LOG_TIMESTAMP}.log"
-readonly STATE_DIR="$HOME/.cache/caelestia-setup"
+readonly STATE_DIR="$HOME/.cache/hyprland-setup"
 readonly STATE_FILE="$STATE_DIR/setup_state.json"
-readonly BACKUP_DIR="$HOME/Documents/caelestia-configs-${BACKUP_TIMESTAMP}"
+readonly BACKUP_DIR="$HOME/Documents/hyprland-configs-${BACKUP_TIMESTAMP}"
 
 log() {
 	echo -e "${GREEN}[$(date +'%H:%M:%S')]${NC} $1" | tee -a "$LOG"
@@ -781,8 +781,9 @@ setup_meta_packages() {
         "fuzzel"						# Application launcher for wlroots based Wayland compositors
 		
 		## 15.3 Caelestia Configuration
-		"caelestia-cli"                 # Caelestia CLI tools
-		"caelestia-shell"               # Caelestia shell configuration
+		#"caelestia-cli"                 # Caelestia CLI tools
+		#"caelestia-shell"               # Caelestia shell configuration
+        "dms-shell-bin"
 		
 		# ==========================================================================
 		# PHASE 16: GTK/QT THEMING & APPEARANCE
@@ -1478,7 +1479,7 @@ setup_directories() {
     mkdir -p "$HOME/.local/bin"
 
     mkdir -p "$HOME/.config/btop"
-    mkdir -p "$HOME/.config/caelestia"
+    #mkdir -p "$HOME/.config/caelestia"
     mkdir -p "$HOME/.config/fastfetch/logo"
     mkdir -p "$HOME/.config/fish/functions"
     mkdir -p "$HOME/.config/hypr/hyprland"
@@ -1487,7 +1488,7 @@ setup_directories() {
     mkdir -p "$HOME/.config/kitty"
     mkdir -p "$HOME/.config/MangoHud"
     mkdir -p "$HOME/.config/micro"
-    mkdir -p "$HOME/.config/spicetify/Themes/caelestia"
+    #mkdir -p "$HOME/.config/spicetify/Themes/caelestia"
     mkdir -p "$HOME/.config/Thunar"
     mkdir -p "$HOME/.config/uwsm"
     mkdir -p "$HOME/.config/vscode"
