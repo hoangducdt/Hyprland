@@ -165,6 +165,7 @@ install_helper(){
         "git"
         "wget"
         "curl"
+        "paru"
         "yay"
     )
     
@@ -434,9 +435,10 @@ setup_meta_packages() {
 		"rsync"                         # File synchronization
 		"tmux"                          # Terminal multiplexer
 		"jq"                            # JSON processor - Dependency của scripts
+        "i2c-tools"                     # I2C/SMBus utilities for sensors/RGB
         "dmidecode"                     # Hardware information decoder
         "fwupd"                         # Firmware update manager
-        "libnotify"
+        "libnotify"                     # Library for sending desktop notifications to a notification daemon
 		"inotify-tools"                 # File system event monitoring
 		
 		## 1.3 Compression Tools (Dependencies cho nhiều packages)
@@ -540,7 +542,7 @@ setup_meta_packages() {
 		## 5.4 Programming Languages
 		"nodejs"                        # Node.js runtime
 		"npm"                           # Node package manager
-		"rustup"                        # Rust language
+		#"rust"                       	# Rust language - REMOVED: conflicts with rustup
 		"go"                            # Go language
 		
 		## 5.5 Python Development
@@ -551,15 +553,15 @@ setup_meta_packages() {
 		"python-scipy"                  # Scientific computing
 		"python-scikit-learn"           # Machine learning
 		"jupyter-notebook"              # Interactive notebooks
-        "python-build"
-        "python-installer"
-        "python-hatch"
-        "python-hatch-vcs"
-        "glibc"
-        "qt6-declarative"
-        "gcc-libs"
-        "libqalculate"
-        "qt6-base"
+        "python-build"					# A simple, correct Python build frontend
+        "python-installer"				# Low-level library for installing a Python package from a wheel distribution
+        "python-hatch"					# A modern project, package, and virtual env manager
+        "python-hatch-vcs"				# Hatch plugin for versioning with your preferred VCS
+        "glibc"							# GNU C Library
+        "qt6-declarative"				# Classes for QML and JavaScript languages
+        "gcc-libs"						# Runtime libraries shipped by GCC
+        "libqalculate"					# Multi-purpose desktop calculator
+        "qt6-base"						# A cross-platform application and UI framework
 		
 		## 5.6 3D Development Libraries (Cho UE5)
 		"assimp"                        # 3D model import library - UE5 model import
@@ -585,9 +587,9 @@ setup_meta_packages() {
 		
 		## 7.1 Container Platform
 		#"docker-desktop"                # Docker Desktop - Bao gồm docker + compose | ⚠️ KHÔNG cài riêng "docker" và "docker-compose"
-		"docker"
-        "docker-compose"
-		"nvidia-container-toolkit"      #The NVIDIA Container Toolkit allows users to build and run GPU-accelerated containers.
+		"docker"						# Docker Desktop is a proprietary desktop application that runs the Docker Engine inside a Linux virtual machine
+        "docker-compose"				# Fast, isolated development environments using Docker
+        "nvidia-container-toolkit"      # The NVIDIA Container Toolkit allows users to build and run GPU-accelerated containers.
 
 		## 7.2 Databases
 		"postgresql"                    # PostgreSQL database
@@ -753,18 +755,17 @@ setup_meta_packages() {
 		"wlr-randr"                     # Display configuration
 		"kanshi"                        # Dynamic display configuration
 		"nwg-displays"                  # Display manager GUI
-        "libcava"
-        "swappy"
-        "grim"
-        "dart-sass"
-        "slurp"
-        "gpu-screen-recorder"
-        "glib2"
-        "fuzzel"
+        "libcava"						# Fork to provide cava as a shared library, e.g. used by waybar. Cava is not provided as executable.
+        "swappy"						# Swappy is a command-line utility to take and edit screenshots of Wayland desktops. Works great with grim, slurp and sway. But can easily work with other screen copy tools that can output a final image to stdout.
+        "grim"							# Screenshot utility for Wayland
+        "dart-sass"						# Sass makes CSS fun again
+        "slurp"							# Slurp is a command-line utility to select a region from Wayland compositors which support the layer-shell protocol. It lets the user hold the pointer to select, or click to cancel the selection.
+        "gpu-screen-recorder"			# A shadowplay-like screen recorder for Linux. The fastest screen recorder for Linux
+        "glib2"							# Low level core library
+        "fuzzel"						# Application launcher for wlroots based Wayland compositors
 		
 		## 15.3 Caelestia Configuration
 		"caelestia-cli"                 # Caelestia CLI tools
-		#"caelestia-shell"               # Caelestia shell configuration
 		"quickshell-git"                # 
 		
 		# ==========================================================================
@@ -779,7 +780,7 @@ setup_meta_packages() {
 		"numix-circle-icon-theme-git"   # Numix-Circle | Numix Circle icon theme
 		"qt5ct-kde"                     # Qt5 configuration tool
 		"qt6ct-kde"                     # Qt6 configuration tool
-        "nwg-look"
+        "nwg-look"						# GTK settings editor adapted to work on wlroots-based compositors
 		
 		## 16.2 Authentication
 		"gnome-keyring"                 # Password manager
@@ -935,7 +936,8 @@ setup_gaming() {
 	# Configure gamemode
     sudo usermod -aG gamemode "$USER"
 
-	sudo chown -R $USER:$USER /usr/lib/asf/
+    # Configure ASF
+	sudo chown -R "$USER":"$USER" /usr/lib/asf/
 
 	cd /usr/lib/asf
 	sudo git clone https://github.com/JustArchiNET/ASF-ui.git temp-ui
@@ -1313,6 +1315,108 @@ EOF
     
     mark_completed "system_optimization"
     log "✓ System optimization completed"
+}
+
+setup_i2c_for_rgb() {
+    if [ "$(is_completed 'i2c_setup')" = "yes" ]; then
+        log "✓ i2c already configured"
+        return 0
+    fi
+    
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log "Configuring i2c for RGB Control (OpenRGB)"
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # 1. Load i2c modules immediately
+    log "Loading i2c kernel modules..."
+    sudo modprobe i2c-dev 2>&1 | tee -a "$LOG" || warn "Failed to load i2c-dev"
+    sudo modprobe i2c-piix4 2>&1 | tee -a "$LOG" || warn "Failed to load i2c-piix4"
+    
+    # 2. Configure modules to load at boot
+    log "Configuring i2c modules for autoload..."
+    
+    # Create i2c.conf if doesn't exist
+    if [ ! -f /etc/modules-load.d/i2c.conf ]; then
+        echo "i2c-dev" | sudo tee /etc/modules-load.d/i2c.conf > /dev/null
+        echo "i2c-piix4" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
+        log "✓ Created /etc/modules-load.d/i2c.conf"
+    else
+        # File exists, append if not already present
+        if ! grep -q "i2c-dev" /etc/modules-load.d/i2c.conf; then
+            echo "i2c-dev" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
+        fi
+        if ! grep -q "i2c-piix4" /etc/modules-load.d/i2c.conf; then
+            echo "i2c-piix4" | sudo tee -a /etc/modules-load.d/i2c.conf > /dev/null
+        fi
+        log "✓ Updated /etc/modules-load.d/i2c.conf"
+    fi
+    
+    # 3. Create i2c group if doesn't exist and add user
+    log "Configuring i2c group permissions..."
+    
+    if ! getent group i2c > /dev/null 2>&1; then
+        sudo groupadd i2c
+        log "✓ Created i2c group"
+    fi
+    
+    # Add user to i2c group
+    sudo usermod -aG i2c "$USER" 2>&1 | tee -a "$LOG"
+    sudo sensors-detect --auto
+
+    log "✓ Added $USER to i2c group"
+    
+    # 4. Create udev rules for i2c devices
+    log "Creating udev rules for i2c devices..."
+    
+    sudo tee /etc/udev/rules.d/99-i2c.rules > /dev/null <<'EOF'
+# i2c device permissions for OpenRGB and other RGB control software
+KERNEL=="i2c-[0-9]*", GROUP="i2c", MODE="0660"
+SUBSYSTEM=="i2c-dev", GROUP="i2c", MODE="0660"
+EOF
+    
+    log "✓ Created /etc/udev/rules.d/99-i2c.rules"
+    
+    # 5. Reload udev rules
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger
+    log "✓ Reloaded udev rules"
+    
+    # 6. Verify i2c devices
+    
+    log "Verifying i2c devices..."
+    if find /dev -maxdepth 1 -type c -name 'i2c-*' | grep -q .; then
+        log "✓ i2c devices found:"
+        find /dev -maxdepth 1 -type c -name 'i2c-*' \
+            -printf "%M %u %g %s %TY-%Tm-%Td %TH:%TM %p\n" \
+            | sed 's/^/  /' | tee -a "$LOG"
+    else
+        warn "⚠ No i2c devices found (may appear after reboot)"
+    fi
+    
+    # 7. Check if modules are loaded
+    log "Checking loaded modules..."
+    if lsmod | grep -q i2c_dev; then
+        log "✓ i2c-dev module loaded"
+    else
+        warn "⚠ i2c-dev module not loaded"
+    fi
+    
+    if lsmod | grep -q i2c_piix4; then
+        log "✓ i2c-piix4 module loaded"
+    else
+        warn "⚠ i2c-piix4 module not loaded (normal for some systems)"
+    fi
+    
+    mark_completed "i2c_setup"
+    
+    echo ""
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log "✓ i2c CONFIGURATION COMPLETE!"
+    log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    log ""
+    log "OpenRGB can now access i2c devices for RGB control"
+    log "⚠️  REBOOT REQUIRED for group membership to take effect"
+    log ""
 }
 
 setup_dev() {
@@ -1758,7 +1862,8 @@ main() {
     setup_ai_ml
     setup_streaming
     setup_system_optimization
-	setup_dev()
+	setup_dev
+    setup_i2c_for_rgb
     setup_gdm
     setup_directories
     setup_configs

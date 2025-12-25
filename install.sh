@@ -181,6 +181,7 @@ install_helper(){
         "git"
         "wget"
         "curl"
+        "paru"
         "yay"
     )
     
@@ -453,6 +454,7 @@ setup_meta_packages() {
         "i2c-tools"                     # I2C/SMBus utilities for sensors/RGB
         "dmidecode"                     # Hardware information decoder
         "fwupd"                         # Firmware update manager
+        "libnotify"                     # Library for sending desktop notifications to a notification daemon
 		"inotify-tools"                 # File system event monitoring
 		
 		## 1.3 Compression Tools (Dependencies cho nhiều packages)
@@ -556,7 +558,7 @@ setup_meta_packages() {
 		## 5.4 Programming Languages
 		"nodejs"                        # Node.js runtime
 		"npm"                           # Node package manager
-		# "rust"                        # Rust language - REMOVED: conflicts with rustup
+		#"rust"                       	# Rust language - REMOVED: conflicts with rustup
 		"go"                            # Go language
 		
 		## 5.5 Python Development
@@ -567,11 +569,15 @@ setup_meta_packages() {
 		"python-scipy"                  # Scientific computing
 		"python-scikit-learn"           # Machine learning
 		"jupyter-notebook"              # Interactive notebooks
-        "glibc"
-        "qt6-declarative"
-        "gcc-libs"
-        "libqalculate"
-        "qt6-base"
+        "python-build"					# A simple, correct Python build frontend
+        "python-installer"				# Low-level library for installing a Python package from a wheel distribution
+        "python-hatch"					# A modern project, package, and virtual env manager
+        "python-hatch-vcs"				# Hatch plugin for versioning with your preferred VCS
+        "glibc"							# GNU C Library
+        "qt6-declarative"				# Classes for QML and JavaScript languages
+        "gcc-libs"						# Runtime libraries shipped by GCC
+        "libqalculate"					# Multi-purpose desktop calculator
+        "qt6-base"						# A cross-platform application and UI framework
 		
 		## 5.6 3D Development Libraries (Cho UE5)
 		"assimp"                        # 3D model import library - UE5 model import
@@ -597,9 +603,9 @@ setup_meta_packages() {
 		
 		## 7.1 Container Platform
 		#"docker-desktop"                # Docker Desktop - Bao gồm docker + compose | ⚠️ KHÔNG cài riêng "docker" và "docker-compose"
-		"docker"
-        "docker-compose"
-        "nvidia-container-toolkit"      #The NVIDIA Container Toolkit allows users to build and run GPU-accelerated containers.
+		"docker"						# Docker Desktop is a proprietary desktop application that runs the Docker Engine inside a Linux virtual machine
+        "docker-compose"				# Fast, isolated development environments using Docker
+        "nvidia-container-toolkit"      # The NVIDIA Container Toolkit allows users to build and run GPU-accelerated containers.
 
 		## 7.2 Databases
 		"postgresql"                    # PostgreSQL database
@@ -644,6 +650,9 @@ setup_meta_packages() {
 		
 		## 9.3 Gaming Utilities
 		"protonup-qt"                   # Proton-GE version manager GUI
+
+		## 9. Gaming Tools
+		"asf"                   		# ArchiSteamFarm is a tool for automatically farming Steam trading cards on multiple accounts simultaneously.
 		
 		# ==========================================================================
 		# PHASE 10: 3D CREATION & BLENDER ECOSYSTEM
@@ -762,8 +771,14 @@ setup_meta_packages() {
 		"wlr-randr"                     # Display configuration
 		"kanshi"                        # Dynamic display configuration
 		"nwg-displays"                  # Display manager GUI
-        "libcava"
-        "swappy"
+        "libcava"						# Fork to provide cava as a shared library, e.g. used by waybar. Cava is not provided as executable.
+        "swappy"						# Swappy is a command-line utility to take and edit screenshots of Wayland desktops. Works great with grim, slurp and sway. But can easily work with other screen copy tools that can output a final image to stdout.
+        "grim"							# Screenshot utility for Wayland
+        "dart-sass"						# Sass makes CSS fun again
+        "slurp"							# Slurp is a command-line utility to select a region from Wayland compositors which support the layer-shell protocol. It lets the user hold the pointer to select, or click to cancel the selection.
+        "gpu-screen-recorder"			# A shadowplay-like screen recorder for Linux. The fastest screen recorder for Linux
+        "glib2"							# Low level core library
+        "fuzzel"						# Application launcher for wlroots based Wayland compositors
 		
 		## 15.3 Caelestia Configuration
 		"caelestia-cli"                 # Caelestia CLI tools
@@ -775,12 +790,13 @@ setup_meta_packages() {
 		
 		## 16.1 Themes
 		"adw-gtk-theme"                 # Adwaita GTK theme
-		#"papirus-icon-theme"            # Papirus-Dark | Papirus icon theme
-		#"tela-circle-icon-theme-git"    # Tela Circle icon theme
-		#"whitesur-icon-theme-git"       # WhiteSur (Phong cách macOS)
+		"papirus-icon-theme"            # Papirus-Dark | Papirus icon theme
+		"tela-circle-icon-theme-git"    # Tela Circle icon theme
+		"whitesur-icon-theme-git"       # WhiteSur (Phong cách macOS)
 		"numix-circle-icon-theme-git"   # Numix-Circle | Numix Circle icon theme
 		"qt5ct-kde"                     # Qt5 configuration tool
 		"qt6ct-kde"                     # Qt6 configuration tool
+        "nwg-look"						# GTK settings editor adapted to work on wlroots-based compositors
 		
 		## 16.2 Authentication
 		"gnome-keyring"                 # Password manager
@@ -828,7 +844,6 @@ setup_meta_packages() {
         "lm_sensors"                    # Hardware monitoring sensors
         "zenmonitor"                    # AMD Ryzen monitor GUI
         "corectrl"                      # AMD GPU/CPU control center
-		"amdgpu_top"                    # AMD GPU monitor
 		"iotop"                         # I/O monitor
 		"iftop"                         # Network monitor
 		
@@ -936,6 +951,18 @@ setup_gaming() {
     fi
 	# Configure gamemode
     sudo usermod -aG gamemode "$USER"
+
+    # Configure ASF
+	sudo chown -R "$USER":"$USER" /usr/lib/asf/
+
+	cd /usr/lib/asf
+	sudo git clone https://github.com/JustArchiNET/ASF-ui.git temp-ui
+	cd temp-ui
+	sudo npm install
+	sudo npm run build
+	cd ..
+	sudo cp -r temp-ui/dist/* www/
+	sudo rm -rf temp-ui
 
     mark_completed "gaming"
     log "✓ Gaming setup completed"
@@ -1408,6 +1435,20 @@ EOF
     log ""
 }
 
+setup_dev() {
+    if [ "$(is_completed 'dev')" = "yes" ]; then
+        log "✓ Dev tools already installed"
+        return 0
+    fi
+    
+    log "Installing Dev tools..."
+	
+    dotnet new install "Avalonia.Templates"
+    
+    mark_completed "dev"
+    log "✓ Dev tools installed"
+}
+
 setup_gdm() {
     if [ "$(is_completed 'gdm')" = "yes" ]; then
         log "✓ GDM already installed"
@@ -1790,6 +1831,7 @@ main() {
     setup_ai_ml
     setup_streaming
     setup_system_optimization
+    setup_dev
     setup_i2c_for_rgb
     setup_gdm
     setup_directories
