@@ -464,6 +464,7 @@ setup_meta_packages() {
 		"unrar"                         # RAR extraction
         "ark"                           # KDE archive manager - GUI for all formats
 		"thunar-archive-plugin"			#The Thunar Archive Plugin allows you to create and extract archive files using the file context menus in the Thunar file manager.
+        "matugen"                       # A material you color generation tool with templates
 		
 		## 1.4 File System Support
 		"btrfs-progs"                   # Btrfs file system utilities
@@ -783,7 +784,13 @@ setup_meta_packages() {
 		## 15.3 Caelestia Configuration
 		#"caelestia-cli"                 # Caelestia CLI tools
 		#"caelestia-shell"               # Caelestia shell configuration
-        "dms-shell-bin"
+        ## 15.3 DankMaterialShell
+        "quickshell"                    # The core framework
+        "cava"                          # Console audio visualizer
+        "qt6-multimedia-ffmpeg"         # Qt6 multimedia with FFmpeg
+        "dgop"                          # System telemetry for resource widgets
+        "dsearch"                       # Filesystem search engine
+		"dms-shell-bin"                 # DankMaterialShell
 		
 		# ==========================================================================
 		# PHASE 16: GTK/QT THEMING & APPEARANCE
@@ -1460,6 +1467,30 @@ setup_dev() {
     log "✓ Dev tools installed"
 }
 
+setup_dms() {
+    if [ "$(is_completed 'dms')" = "yes" ]; then
+        log "✓ DMS already installed"
+        return 0
+    fi
+    
+    log "Installing DMS..."
+
+    sudo tee "$HOME/.config/systemd/user/hyprland-session.target" > /dev/null <<DMS_SERVICE
+[Unit]
+Description=Hyprland Session Target
+Requires=graphical-session.target
+After=graphical-session.target
+DMS_SERVICE
+
+    systemctl --user add-wants hyprland-session.target dms
+    
+    # Bật DMS
+    systemctl --user enable dms
+    
+    mark_completed "DMS"
+    log "✓ dms installed and enabled"
+}
+
 setup_gdm() {
     if [ "$(is_completed 'gdm')" = "yes" ]; then
         log "✓ GDM already installed"
@@ -1844,6 +1875,7 @@ main() {
     setup_system_optimization
     setup_dev
     setup_i2c_for_rgb
+    setup_dms
     setup_gdm
     setup_directories
     setup_configs
