@@ -76,7 +76,7 @@ EOF
 }
 
 clone_repo(){
-    local repo_dir="$HOME/.local/share/caelestia"
+    local repo_dir="$HOME/.local/share/Hyprland"
     
     if [ -d "$repo_dir/.git" ]; then
         log "Repository already exists, pulling latest changes..."
@@ -84,7 +84,7 @@ clone_repo(){
         git pull || warn "Failed to pull latest changes, continuing with existing version"
     else
         log "Cloning repository..."
-        git clone https://github.com/hoangducdt/caelestia.git "$repo_dir" || error "Failed to clone repository"
+        git clone https://github.com/hoangducdt/Hyprland.git "$repo_dir" || error "Failed to clone repository"
         cd "$repo_dir" || error "Failed to cd to $repo_dir"
     fi
 }
@@ -1518,7 +1518,7 @@ setup_configs() {
     log "Installing configuration files..."
     
     local config_home="$HOME"
-    local configs_dir="$HOME/.local/share/caelestia/Configs"
+    local configs_dir="$HOME/.local/share/Hyprland/Configs"
     
     if [ ! -d "$configs_dir" ]; then
         error "Configs directory not found at $configs_dir"
