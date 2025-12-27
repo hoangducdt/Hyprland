@@ -76,13 +76,17 @@ if ! sudo -v; then
 fi
 
 # Keep sudo alive - tự động refresh mỗi 60s
-(
+keep_sudo_alive() {
     while true; do
-        sudo -n true
-        sleep 60
-        kill -0 "$$" || exit
-    done 2>/dev/null
-) &
+        sudo -v
+        sleep 50
+        if ! kill -0 "$$" 2>/dev/null; then
+            exit 0
+        fi
+    done
+}
+
+keep_sudo_alive &
 SUDO_REFRESH_PID=$!
 
 trap 'kill $SUDO_REFRESH_PID 2>/dev/null' EXIT
@@ -218,14 +222,27 @@ install_package() {
             return 0
         fi
         
+        # Auto-fix common errors
+        if grep -qi "keyring" "$LOG"; then
+            warn "Keyring issue detected, refreshing keys..."
+            sudo pacman -Sy --noconfirm archlinux-keyring cachyos-keyring 2>&1 | tee -a "$LOG"
+        elif grep -qi "conflicting files" "$LOG"; then
+            warn "File conflict detected, trying with --overwrite..."
+            if sudo pacman -S --noconfirm --overwrite '*' "$pkg" 2>&1 | tee -a "$LOG"; then
+                log "✓ Successfully installed with overwrite: $pkg"
+                return 0
+            fi
+        fi
+        
         retry=$((retry + 1))
         if [ $retry -lt $max_retries ]; then
-            warn "Retry installing $pkg ($retry/$max_retries)..."
-            sleep 2
+            local wait_time=$((2 ** retry))
+            warn "Retry installing $pkg ($retry/$max_retries) in ${wait_time}s..."
+            sleep "$wait_time"
         fi
     done
     
-    warn "Failed to install $pkg"
+    warn "Failed to install $pkg after $max_retries attempts"
     return 1
 }
 
@@ -258,19 +275,38 @@ install_packages() {
     local failed=()
     local total=${#packages[@]}
     local current=0
+    local start_time
+    start_time=$(date +%s)
     
     log "Installing $total packages..."
     
+    # Increase parallel downloads
+    if ! grep -q "^ParallelDownloads" /etc/pacman.conf; then
+        echo "ParallelDownloads = 10" | sudo tee -a /etc/pacman.conf >/dev/null
+    fi
+    
     for pkg in "${packages[@]}"; do
         ((current++))
+        local elapsed=$(($(date +%s) - start_time))
+        local avg_time=$((elapsed > 0 && current > 0 ? elapsed / current : 0))
+        local remaining=$((total - current))
+        local eta=$((avg_time * remaining))
         local progress=$((current * 100 / total))
         
+        # Progress bar
+        local filled=$((progress / 2))
+        local bar
+        local empty
+        bar=$(printf "%${filled}s" | tr ' ' '█')
+        empty=$(printf "%$((50 - filled))s" | tr ' ' '░')
+        
         if pacman -Qi "$pkg" &>/dev/null; then
-            log "[$progress%] [$current/$total] $pkg (already installed)"
+            echo -ne "[${bar}${empty}] ${progress}% | ${current}/${total} | ETA: ${eta}s"
             continue
         fi
         
-        log "[$progress%] [$current/$total] Installing $pkg..."
+        echo -ne "[${bar}${empty}] ${progress}% | ${current}/${total} | Installing: $pkg"
+        
         if pacman -Si "$pkg" &>/dev/null 2>&1; then
             if ! install_package "$pkg"; then
                 failed+=("$pkg")
@@ -282,6 +318,8 @@ install_packages() {
             fi
         fi
     done
+    
+    echo -e ""
     
     # Summary report
     log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -314,6 +352,29 @@ backup_dir() {
         cp -r "$dir" "$backup_path" 2>/dev/null || warn "Failed to backup $dir"
         log "Backed up: $dir"
     fi
+}
+
+setup_gtk_bookmarks() {
+    log "Setting up GTK bookmarks..."
+    local bookmarks_file="$HOME/.config/gtk-3.0/bookmarks"
+    mkdir -p "$HOME/.config/gtk-3.0"
+    local bookmarks=(
+        "file://$HOME/Downloads"
+        "file://$HOME/Documents"
+        "file://$HOME/Pictures"
+        "file://$HOME/Videos"
+        "file://$HOME/Music"
+    )
+    for bookmark in "${bookmarks[@]}"; do
+        if [ -f "$bookmarks_file" ]; then
+            if ! grep -qF "$bookmark" "$bookmarks_file"; then
+                echo "$bookmark" >> "$bookmarks_file"
+            fi
+        else
+            echo "$bookmark" >> "$bookmarks_file"
+        fi
+    done
+    log "✓ GTK bookmarks configured"
 }
 
 # ===== SETUP FUNCTIONS =====
@@ -447,7 +508,7 @@ setup_meta_packages() {
     log "Installing base packages (CachyOS optimized)..."
     local meta_pkgs=(
 		# ==========================================================================
-		# PHASE 1: CORE SYSTEM DEPENDENCIES (Cài đầu tiên - Foundation)
+		# PHASE 1: CORE SYSTEM DEPENDENCIES
 		# ==========================================================================
 		
 		## 1.1 Base System Libraries
@@ -467,7 +528,7 @@ setup_meta_packages() {
         "libnotify"                     # Library for sending desktop notifications to a notification daemon
 		"inotify-tools"                 # File system event monitoring
 		
-		## 1.3 Compression Tools (Dependencies cho nhiều packages)
+		## 1.3 Compression Tools
 		"zip"                           # ZIP compression
 		"unzip"                         # ZIP extraction
 		"p7zip"                         # 7-Zip compression
@@ -498,19 +559,19 @@ setup_meta_packages() {
 		"xdg-desktop-portal-gtk"        # XDG portal for file dialogs
 		"xdg-desktop-portal-hyprland"   # Hyprland-specific portal
 		
-		## 2.2 Graphics Libraries (Cài trước GPU drivers/apps)
+		## 2.2 Graphics Libraries
 		"vulkan-icd-loader"             # Vulkan loader - BẮT BUỘC cho gaming/UE5
 		"lib32-vulkan-icd-loader"       # 32-bit Vulkan support
-        "lib32-vulkan-mesa-layers"
-        "lib32-mesa"
-        "lib32-libglvnd"
+        "lib32-vulkan-mesa-layers"      # Mesa's explicit Vulkan layers - 32-bit
+        "lib32-mesa"                    # Open-source OpenGL drivers - 32-bit
+        "lib32-libglvnd"                # The GL Vendor-Neutral Dispatch library
 		
 		## 2.3 NVIDIA Hardware Acceleration
 		"libva-nvidia-driver"           # VA-API for NVIDIA - Video acceleration
 		"lib32-nvidia-utils"            # 32-bit NVIDIA utilities - Cho gaming
 		
 		# ==========================================================================
-		# PHASE 3: AUDIO FOUNDATION (Cài trước multimedia apps)
+		# PHASE 3: AUDIO FOUNDATION
 		# ==========================================================================
 		
 		## 3.1 PipeWire Core (Modern audio server)
@@ -559,7 +620,7 @@ setup_meta_packages() {
 		# PHASE 5: DEVELOPMENT TOOLS FOUNDATION
 		# ==========================================================================
 		
-		## 5.1 Build System Core (Cài trước compilers)
+		## 5.1 Build System Core
 		"cmake"                         # Cross-platform build system - UE5 dependency
 		"ninja"                         # Fast build tool - UE5 build system
 		"meson"                         # Modern build system
@@ -633,7 +694,7 @@ setup_meta_packages() {
 		# PHASE 8: AI/ML STACK
 		# ==========================================================================
 		
-		## 8.1 CUDA Foundation (Cài trước PyTorch)
+		## 8.1 CUDA Foundation
 		"cuda"                          # NVIDIA CUDA Toolkit - BẮT BUỘC cho AI/ML
 		"cudnn"                         # CUDA Deep Neural Network library
 		
@@ -742,7 +803,7 @@ setup_meta_packages() {
 		"obs-vaapi"                     # VA-API plugin for OBS
 		"obs-nvfbc"                     # NVIDIA capture plugin
 		"obs-vkcapture"                 # Vulkan capture plugin
-		#"obs-websocket"               # WebSocket plugin - REMOVED: installs obs-studio-browser which conflicts with obs-studio
+		#"obs-websocket"                 # WebSocket plugin - REMOVED: installs obs-studio-browser which conflicts with obs-studio
 		
 		# ==========================================================================
 		# PHASE 13: PUBLISHING & DOCUMENT TOOLS
@@ -798,7 +859,7 @@ setup_meta_packages() {
 		
 		## 15.3 Caelestia Configuration
 		"caelestia-cli"                 # Caelestia CLI tools
-		"quickshell-git"                # 
+		"quickshell-git"                # Flexible toolkit for making desktop shells with QtQuick
 		
 		# ==========================================================================
 		# PHASE 16: GTK/QT THEMING & APPEARANCE
@@ -976,15 +1037,15 @@ setup_gaming() {
 	if [ -d "/usr/lib/asf/temp-ui/.git" ]; then
         log "Repository already exists, pulling latest changes..."
         cd temp-ui
-        sudo git pull || warn "Failed to pull latest changes, continuing with existing version"
+        git pull || warn "Failed to pull latest changes, continuing with existing version"
     else
         log "Cloning repository..."
-        sudo git clone https://github.com/JustArchiNET/ASF-ui.git temp-ui || error "Failed to clone repository"
+        git clone https://github.com/JustArchiNET/ASF-ui.git temp-ui || error "Failed to clone repository"
         cd temp-ui
     fi
 	
-	sudo npm install
-	sudo npm run build
+	npm install
+	npm run build
 	cd ..
 	sudo cp -r temp-ui/dist/* www/
 	sudo rm -rf temp-ui
@@ -1534,14 +1595,14 @@ setup_directories() {
     log "✓ Directories created"
 }
 
-setup_configs() {
-    if [ "$(is_completed "configs")" = "yes" ]; then
-        log "✓ Configuration files already installed, skipping"
+setup_symlink(){
+    if [ "$(is_completed "symlink")" = "yes" ]; then
+        log "✓ Symlink files have been configured, skipping"
         return 0
     fi
     
-    log "Installing configuration files..."
-    
+    log "Symlink filess..."
+
     local config_home="$HOME"
     local configs_dir="$HOME/.local/share/Hyprland/Configs"
     
@@ -1654,6 +1715,18 @@ setup_configs() {
         chmod +x "$config_home/.config/fastfetch/fastfetch.sh"
     fi
 
+    mark_completed "symlink"
+    log "✓ All Symlink files have been successfully configured."
+}
+
+setup_accountsservice(){
+    if [ "$(is_completed "accountsservice")" = "yes" ]; then
+        log "✓ Account services have been configured, skipping"
+        return 0
+    fi
+    
+    log "Configuration account services..."
+
     if [ -L "$config_home/.face" ]; then
         local face_target
         face_target=$(readlink -f "$config_home/.face")
@@ -1751,6 +1824,17 @@ ACCOUNTSEOF
         warn "GDM user may not be able to read avatar file"
         warn "You may need to manually fix directory permissions"
     fi
+
+    mark_completed "accountsservice"
+    log "✓ All account service configurations have been successfully completed."
+}
+
+
+setup_configs() {
+    if [ "$(is_completed "configs")" = "yes" ]; then
+        log "✓ Configuration files already installed, skipping"
+        return 0
+    fi
     
     log "Configuring system settings..."
     local resolved_conf="/etc/systemd/resolved.conf"
@@ -1824,15 +1908,8 @@ STATIC_IP
         warn "Could not detect primary network interface for static IP configuration"
     fi
 
-    # Thêm bookmarks
-    cat >> "$HOME/.config/gtk-3.0/bookmarks" <<EOF
-file://$HOME/Downloads
-file://$HOME/Documents
-file://$HOME/Pictures
-file://$HOME/Videos
-file://$HOME/Music
-EOF
     
+
     mark_completed "configs"
     log "✓ All configurations installed successfully"
 }
@@ -1887,6 +1964,27 @@ EOF
 
 # ===== POST-INSTALL VERIFICATION =====
 
+verify_services() {
+    log "Verifying critical services..."
+    local services=("docker" "NetworkManager" "systemd-resolved" "gdm")
+    local failed=()
+    for svc in "${services[@]}"; do
+        if systemctl list-unit-files | grep -q "^${svc}.service"; then
+            if systemctl is-enabled "$svc" &>/dev/null; then
+                log "✓ $svc is enabled"
+            else
+                warn "○ $svc is not enabled"
+                failed+=("$svc")
+            fi
+        fi
+    done
+    if [ ${#failed[@]} -gt 0 ]; then
+        warn "Services not enabled: ${failed[*]}"
+        return 1
+    fi
+    log "✓ All critical services verified"
+}
+
 verify_installation() {
     log "Verifying critical installations..."
     
@@ -1930,6 +2028,16 @@ verify_installation() {
 
 # ===== GENERATE SUMMARY REPORT =====
 
+cleanup_cache() {
+    log "Cleaning up package cache..."
+    sudo paccache -rk2 2>/dev/null || true
+    sudo paccache -ruk0 2>/dev/null || true
+    if command -v yay &>/dev/null; then
+        yay -Sc --noconfirm 2>/dev/null || true
+    fi
+    log "✓ Cache cleaned"
+}
+
 generate_summary() {
     log "Generating installation summary..."
     
@@ -1969,13 +2077,18 @@ main() {
     setup_ai_ml
     setup_streaming
     setup_system_optimization
-	setup_dev
+    setup_dev
     setup_i2c_for_rgb
     setup_gdm
     setup_directories
+    setup_symlink
+    setup_accountsservice
     setup_configs
-	setup_caelestia
+    setup_gtk_bookmarks
+    setup_caelestia
+    verify_services
     verify_installation
+    cleanup_cache
     generate_summary
     
     # Done
